@@ -1,0 +1,15 @@
+# Core deep learning framework
+
+torch>=1.10.0
+
+# Scientific computing and numerical operations
+
+numpy>=1.20.0
+
+# Plotting and visualization of loss curves
+
+matplotlib>=3.4.0
+
+# Progress bar tracking for training epochs
+
+tqdm>=4.60.0
