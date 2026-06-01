@@ -1,0 +1,15 @@
+{
+    "experiment_name": "Baseline_RNN",
+    "model_type": "RNN",
+    "optimizer": "SGD",
+    "emb_size": 300,
+    "hidden_size": 200,
+    "lr": 1.0,
+    "patience": 3,
+    "batch_size": 64,
+    "clip": 5,
+    "n_epochs": 20,
+    "vocabulary_size": 10001,
+    "best_val_ppl": 169.33395805505788,
+    "final_test_ppl": 161.83165771257535
+}
