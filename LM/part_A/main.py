@@ -137,6 +137,8 @@ def main():
 
     if optimizer_name.upper() == 'SGD':
         optimizer = optim.SGD(model.parameters(), lr=lr)
+    elif optimizer_name.upper() == 'ADAMW':
+        optimizer = optim.AdamW(model.parameters(), lr=lr)
     else:
         optimizer = optim.Adam(model.parameters(), lr=lr)
     criterion_train = nn.CrossEntropyLoss(ignore_index=pad_idx)
