@@ -1,0 +1,11 @@
+{
+    "architecture": "LM_RNN (Vanilla)",
+    "vocabulary_size": 10001,
+    "embedding_size": 300,
+    "hidden_size": 200,
+    "learning_rate": 1.0,
+    "gradient_clip": 5,
+    "seed": 1234,
+    "best_val_ppl": 169.3339498326092,
+    "final_test_ppl": 161.8316546992143
+}
