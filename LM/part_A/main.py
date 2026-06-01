@@ -26,7 +26,7 @@ def main():
     parser.add_argument(
         "--model_path", 
         type=str, 
-        default="bin/baseline_rnn/baseline_rnn.pt", 
+        default="bin/Baseline_RNN/Baseline_RNN.pt", 
         help="Relative path to a pre-trained PyTorch weight checkpoint (.pt)."
     )
     args = parser.parse_args()
@@ -65,9 +65,18 @@ def main():
         collate_fn=partial(collate_fn, pad_token=pad_idx, device=device)
     )
 
-    # Core Hyperparameters (Baseline Model Configuration)
+    # Core Configuration Parameters (Consistent with your original execution settings)
+    experiment_name = "Baseline_RNN"
+    model_type = "RNN"
+    optimizer_name = "SGD"
     emb_size = 300
     hid_size = 200
+    lr = 1.0
+    patience = 3     # Restored original early stopping patience
+    batch_size = 64  # Restored training batch size
+    clip = 5
+    n_epochs = 20    # Restored original baseline epoch limit
+
     criterion_eval = nn.CrossEntropyLoss(ignore_index=pad_idx, reduction='sum')
 
     # ================= EVALUATION ONLY MODE =================
@@ -102,14 +111,10 @@ def main():
     train_dataset = PennTreeBank(train_raw, lang)
     train_loader = DataLoader(
         train_dataset, 
-        batch_size=64, 
+        batch_size=batch_size, 
         collate_fn=partial(collate_fn, pad_token=pad_idx, device=device), 
         shuffle=True
     )
-
-    # Optimization Parameters (Sustained High Learning Rate for vanilla SGD)
-    lr = 1.0       # Standard initialization learning rate
-    clip = 5       # Max norm threshold for gradient clipping
 
     # Build model architecture and apply custom weight initializations
     model = LM_RNN(emb_size, hid_size, vocab_len, pad_index=pad_idx).to(device)
@@ -118,14 +123,13 @@ def main():
     optimizer = optim.SGD(model.parameters(), lr=lr)
     criterion_train = nn.CrossEntropyLoss(ignore_index=pad_idx)
 
-    # Training Loop Configurations
-    n_epochs = 20
-    patience = 3
+    # Training Loop Tracking Variables
     losses_train = []
     losses_dev = []
     
     best_ppl = math.inf
     best_model_state = None
+    current_patience = patience  # Initialize dynamic early stopping patience tracking steps
 
     pbar = tqdm(range(1, n_epochs + 1), desc="Epoch Progress")
     for epoch in pbar:
@@ -158,15 +162,19 @@ def main():
     final_ppl, _ = eval_loop(test_loader, criterion_eval, best_model)
     print(f"\n{'='*48}\nTest Set Evaluation Results:\nVanilla RNN Perplexity (PPL): {final_ppl:.3f}\n{'='*48}")
 
-    # Structuring and Saving Run Metadata & Metrics
+    # Structuring and Saving Run Metadata & Metrics (Preserving your exact requested keys)
     config_details = {
-        "architecture": "LM_RNN (Vanilla)",
-        "vocabulary_size": vocab_len,
-        "embedding_size": emb_size,
+        "experiment_name": experiment_name,
+        "model_type": model_type,
+        "optimizer": optimizer_name,
+        "emb_size": emb_size,
         "hidden_size": hid_size,
-        "learning_rate": lr,
-        "gradient_clip": clip,
-        "seed": 1234,
+        "lr": lr,
+        "patience": patience,
+        "batch_size": batch_size,
+        "clip": clip,
+        "n_epochs": n_epochs,
+        "vocabulary_size": vocab_len,
         "best_val_ppl": best_ppl,
         "final_test_ppl": final_ppl
     }
@@ -176,7 +184,7 @@ def main():
         hyperparameters=config_details,
         train_losses=losses_train,
         dev_losses=losses_dev,
-        name="baseline_rnn"
+        name=experiment_name
     )
 
 if __name__ == "__main__":
