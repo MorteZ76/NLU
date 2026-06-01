@@ -63,20 +63,41 @@ class LM_RNN(nn.Module):
 
 
 class LM_LSTM(nn.Module):
-    """
-    LSTM-based Language Model for sequence prediction.
-    """
     def __init__(self, emb_size, hidden_size, output_size, pad_index=0, out_dropout=0.1,
                  emb_dropout=0.1, n_layers=1):
         super(LM_LSTM, self).__init__()
 
+        # Token ids to vectors
         self.embedding = nn.Embedding(output_size, emb_size, padding_idx=pad_index)
+
+        # STEP 2a: First Dropout layer (applied after embedding)
+        self.emb_dropout = nn.Dropout(emb_dropout)
+
+        # STEP 1: Replace nn.RNN with nn.LSTM (from previous step)
         self.lstm = nn.LSTM(emb_size, hidden_size, n_layers, bidirectional=False, batch_first=True)
+
         self.pad_token = pad_index
+
+        # STEP 2b: Second Dropout layer (applied before final linear layer)
+        self.out_dropout = nn.Dropout(out_dropout)
+
+        # Linear layer to project the hidden layer to our output space
         self.output = nn.Linear(hidden_size, output_size)
 
     def forward(self, input_sequence):
+        # Get embeddings
         emb = self.embedding(input_sequence)
+
+        # Apply first dropout
+        emb = self.emb_dropout(emb)
+
+        # Pass through LSTM
         lstm_out, _ = self.lstm(emb)
+
+        # Apply second dropout
+        lstm_out = self.out_dropout(lstm_out)
+
+        # Project to vocabulary size and permute for CrossEntropyLoss expected shape
         output = self.output(lstm_out).permute(0, 2, 1)
+
         return output

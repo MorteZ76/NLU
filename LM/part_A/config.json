@@ -1,5 +1,5 @@
 {
-  "experiment_name": "Baseline_LSTM",
+  "experiment_name": "LSTM_with_Dropout",
   "model_type": "LSTM",
   "optimizer": "SGD",
   "emb_size": 300,
