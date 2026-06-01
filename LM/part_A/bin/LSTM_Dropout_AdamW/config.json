@@ -1,0 +1,15 @@
+{
+    "experiment_name": "LSTM_Dropout_AdamW",
+    "model_type": "LSTM",
+    "optimizer": "AdamW",
+    "emb_size": 300,
+    "hidden_size": 200,
+    "lr": 0.001,
+    "patience": 3,
+    "batch_size": 64,
+    "clip": 5,
+    "n_epochs": 20,
+    "vocabulary_size": 10001,
+    "best_val_ppl": 133.24638374537483,
+    "final_test_ppl": 122.83841799598945
+}
