@@ -1,10 +1,10 @@
 {
-  "experiment_name": "LSTM_with_Dropout",
+  "experiment_name": "LSTM_Dropout_AdamW",
   "model_type": "LSTM",
-  "optimizer": "SGD",
+  "optimizer": "AdamW",
   "emb_size": 300,
   "hidden_size": 200,
-  "lr": 1.0,
+  "lr": 0.001,
   "patience": 3,
   "batch_size": 64,
   "clip": 5,
