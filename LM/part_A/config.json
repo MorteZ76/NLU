@@ -1,0 +1,12 @@
+{
+  "experiment_name": "Baseline_LSTM",
+  "model_type": "LSTM",
+  "optimizer": "SGD",
+  "emb_size": 300,
+  "hidden_size": 200,
+  "lr": 1.0,
+  "patience": 3,
+  "batch_size": 64,
+  "clip": 5,
+  "n_epochs": 20
+}

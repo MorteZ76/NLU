@@ -1,5 +1,6 @@
 import sys
 import os
+import json
 import math
 import argparse
 import numpy as np
@@ -12,12 +13,20 @@ from torch.utils.data import DataLoader
 
 # Import modular project blocks
 from utils import download_ptb, read_file, Lang, PennTreeBank, collate_fn
-from model import LM_RNN
+from model import LM_RNN, LM_LSTM
 from functions import set_seed, init_weights, train_loop, eval_loop, save_experiment
 
 def main():
+    # 0. Load configuration
+    config_path = os.path.join(os.path.dirname(__file__), "config.json")
+    with open(config_path, 'r') as f:
+        config = json.load(f)
+
+    print(f"[Config] Loaded configuration from {config_path}")
+    print(f"[Config] Experiment: {config['experiment_name']} | Model: {config['model_type']} | Optimizer: {config['optimizer']}")
+
     # 1. Command-Line Argument Interface Setup
-    parser = argparse.ArgumentParser(description="Autoregressive LM_RNN Language Model Training & Evaluation.")
+    parser = argparse.ArgumentParser(description="Autoregressive Language Model Training & Evaluation.")
     parser.add_argument(
         "--eval_only", 
         action="store_true", 
@@ -26,7 +35,7 @@ def main():
     parser.add_argument(
         "--model_path", 
         type=str, 
-        default="bin/Baseline_RNN/Baseline_RNN.pt", 
+        default=f"bin/{config['experiment_name']}/{config['experiment_name']}.pt", 
         help="Relative path to a pre-trained PyTorch weight checkpoint (.pt)."
     )
     args = parser.parse_args()
@@ -56,26 +65,26 @@ def main():
     # Initialize Validation and Test DataLoaders
     dev_loader = DataLoader(
         dev_dataset, 
-        batch_size=128, 
+        batch_size=config['batch_size'], 
         collate_fn=partial(collate_fn, pad_token=pad_idx, device=device)
     )
     test_loader = DataLoader(
         test_dataset, 
-        batch_size=128, 
+        batch_size=config['batch_size'], 
         collate_fn=partial(collate_fn, pad_token=pad_idx, device=device)
     )
 
-    # Core Configuration Parameters (Consistent with your original execution settings)
-    experiment_name = "Baseline_RNN"
-    model_type = "RNN"
-    optimizer_name = "SGD"
-    emb_size = 300
-    hid_size = 200
-    lr = 1.0
-    patience = 3     # Restored original early stopping patience
-    batch_size = 64  # Restored training batch size
-    clip = 5
-    n_epochs = 20    # Restored original baseline epoch limit
+    # Core Configuration Parameters
+    experiment_name = config['experiment_name']
+    model_type = config['model_type']
+    optimizer_name = config['optimizer']
+    emb_size = config['emb_size']
+    hid_size = config['hidden_size']
+    lr = config['lr']
+    patience = config['patience']
+    batch_size = config['batch_size']
+    clip = config['clip']
+    n_epochs = config['n_epochs']
 
     criterion_eval = nn.CrossEntropyLoss(ignore_index=pad_idx, reduction='sum')
 
@@ -90,7 +99,10 @@ def main():
         print(f"[Load] Loading model parameters from: {args.model_path}")
         
         # Instantiate model architecture and load saved parameters
-        model = LM_RNN(emb_size, hid_size, vocab_len, pad_index=pad_idx).to(device)
+        if model_type.upper() == 'LSTM':
+            model = LM_LSTM(emb_size, hid_size, vocab_len, pad_index=pad_idx).to(device)
+        else:
+            model = LM_RNN(emb_size, hid_size, vocab_len, pad_index=pad_idx).to(device)
         model.load_state_dict(torch.load(args.model_path, map_location=device))
         
         # Calculate perplexity metrics across validation and test sets
@@ -117,10 +129,16 @@ def main():
     )
 
     # Build model architecture and apply custom weight initializations
-    model = LM_RNN(emb_size, hid_size, vocab_len, pad_index=pad_idx).to(device)
+    if model_type.upper() == 'LSTM':
+        model = LM_LSTM(emb_size, hid_size, vocab_len, pad_index=pad_idx).to(device)
+    else:
+        model = LM_RNN(emb_size, hid_size, vocab_len, pad_index=pad_idx).to(device)
     model.apply(init_weights)
 
-    optimizer = optim.SGD(model.parameters(), lr=lr)
+    if optimizer_name.upper() == 'SGD':
+        optimizer = optim.SGD(model.parameters(), lr=lr)
+    else:
+        optimizer = optim.Adam(model.parameters(), lr=lr)
     criterion_train = nn.CrossEntropyLoss(ignore_index=pad_idx)
 
     # Training Loop Tracking Variables
@@ -155,14 +173,17 @@ def main():
                 break
 
     # Restore the best performing parameters from the training run
-    best_model = LM_RNN(emb_size, hid_size, vocab_len, pad_index=pad_idx).to(device)
+    if model_type.upper() == 'LSTM':
+        best_model = LM_LSTM(emb_size, hid_size, vocab_len, pad_index=pad_idx).to(device)
+    else:
+        best_model = LM_RNN(emb_size, hid_size, vocab_len, pad_index=pad_idx).to(device)
     best_model.load_state_dict(best_model_state)
 
     # Final evaluate run across testing dataset
     final_ppl, _ = eval_loop(test_loader, criterion_eval, best_model)
-    print(f"\n{'='*48}\nTest Set Evaluation Results:\nVanilla RNN Perplexity (PPL): {final_ppl:.3f}\n{'='*48}")
+    print(f"\n{'='*48}\nTest Set Evaluation Results:\n{model_type} Perplexity (PPL): {final_ppl:.3f}\n{'='*48}")
 
-    # Structuring and Saving Run Metadata & Metrics (Preserving your exact requested keys)
+    # Structuring and Saving Run Metadata & Metrics
     config_details = {
         "experiment_name": experiment_name,
         "model_type": model_type,
