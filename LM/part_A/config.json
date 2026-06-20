@@ -3,7 +3,7 @@
   "model_type": "LSTM",
   "optimizer": "AdamW",
   "emb_size": 300,
-  "hidden_size": 200,
+  "hidden_size": 400,
   "lr": 0.001,
   "patience": 3,
   "batch_size": 64,
