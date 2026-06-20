@@ -1,0 +1,37 @@
+================================================================================
+GRID SEARCH REPORT: HIDDEN_SIZE
+================================================================================
+
+Generated: 2026-06-20 13:12:22
+Parameter: hidden_size
+
+SUMMARY STATISTICS
+--------------------------------------------------------------------------------
+Total Trials:       4
+Successful Trials:  4
+Failed Trials:      0
+
+Best Metric:        117.881132
+Worst Metric:       133.514302
+Mean Metric:        123.725568
+Std Dev Metric:     5.918400
+Median Metric:      121.753420
+
+DETAILED RESULTS
+--------------------------------------------------------------------------------
+
+#1 | hidden_size=400 | Metric: 117.881132 | Status: ✓ PASS
+     best_val_ppl: 125.8610648327814
+     final_test_ppl: 117.88113211351398
+
+#2 | hidden_size=300 | Metric: 120.668441 | Status: ✓ PASS
+     best_val_ppl: 129.09069494513076
+     final_test_ppl: 120.66844088066483
+
+#3 | hidden_size=200 | Metric: 122.838399 | Status: ✓ PASS
+     best_val_ppl: 133.24637681310014
+     final_test_ppl: 122.83839893521214
+
+#4 | hidden_size=100 | Metric: 133.514302 | Status: ✓ PASS
+     best_val_ppl: 145.4893824866218
+     final_test_ppl: 133.51430154799147
