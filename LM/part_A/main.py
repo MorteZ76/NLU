@@ -128,14 +128,15 @@ def main():
         tuning_grid = config.get('tuning_grid', {})
         
         param_tuning_order = [
-            {
-                "name": "batch_size",
-                "values": tuning_grid.get("batch_size", [16, 32, 64, 128])
-            },
             # {
-            #     "name": "hidden_size",
-            #     "values": tuning_grid.get("hidden_size", [150, 200, 300, 400])
+            #     "name": "batch_size",
+            #     # they were almost the same from 122.4 to 123.3 so i decided to go with what i had before which is 64
+            #     "values": tuning_grid.get("batch_size", [16, 32, 64, 128])
             # },
+            {
+                "name": "hidden_size",
+                "values": tuning_grid.get("hidden_size", [100, 200, 300, 400])
+            },
             # {
             #     "name": "lr",
             #     "values": tuning_grid.get("lr", [0.0001, 0.001, 0.005, 0.01])
