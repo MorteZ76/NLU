@@ -196,14 +196,20 @@ def main():
             criterion_train_local = nn.CrossEntropyLoss(ignore_index=pad_idx)
             criterion_eval_local = nn.CrossEntropyLoss(ignore_index=pad_idx, reduction='sum')
 
-            # Training loop with early stopping
+            # Training loop with early stopping - track losses
             best_ppl_local = math.inf
             best_state_local = None
             current_pat = patience_trial
+            losses_train_local = []
+            losses_dev_local = []
 
             for epoch_local in range(1, n_epochs_trial + 1):
-                _ = train_loop(train_loader_local, optimizer_local, criterion_train_local, model_local, clip_trial)
+                train_loss_local = train_loop(train_loader_local, optimizer_local, criterion_train_local, model_local, clip_trial)
+                losses_train_local.append(train_loss_local)
+                
                 ppl_dev_local, loss_dev_local = eval_loop(dev_loader_local, criterion_eval_local, model_local)
+                losses_dev_local.append(loss_dev_local)
+                
                 if ppl_dev_local < best_ppl_local:
                     best_ppl_local = ppl_dev_local
                     best_state_local = {k: v.cpu() for k, v in model_local.state_dict().items()}
@@ -224,7 +230,7 @@ def main():
 
             # Save experiment artifacts for this trial
             hyperparams = {k: trial_cfg.get(k, base) for k, base in [("emb_size", emb_size), ("hidden_size", hid_size), ("lr", lr), ("batch_size", batch_size), ("optimizer", optimizer_name), ("model_type", model_type), ("patience", patience), ("clip", clip), ("n_epochs", n_epochs)]}
-            save_experiment(best_model_local, hyperparams, [], [], name=trial_cfg['experiment_name'])
+            save_experiment(best_model_local, hyperparams, losses_train_local, losses_dev_local, name=trial_cfg['experiment_name'])
 
             extras = {"best_val_ppl": best_ppl_local, "final_test_ppl": final_ppl_local}
             return final_ppl_local, extras
