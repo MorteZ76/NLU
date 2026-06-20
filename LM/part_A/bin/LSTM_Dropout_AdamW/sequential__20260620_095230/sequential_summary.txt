@@ -1,0 +1,27 @@
+================================================================================
+SEQUENTIAL GRID SEARCH SUMMARY
+================================================================================
+
+Generated: 2026-06-20 10:14:57
+
+FINAL BEST CONFIGURATION
+--------------------------------------------------------------------------------
+  experiment_name: LSTM_Dropout_AdamW
+  model_type: LSTM
+  optimizer: AdamW
+  emb_size: 300
+  hidden_size: 200
+  lr: 0.001
+  patience: 3
+  batch_size: 16
+  clip: 5
+  n_epochs: 20
+
+
+SEARCH PROGRESSION
+--------------------------------------------------------------------------------
+
+Step 1: batch_size
+  Best Value: 16
+  Best Metric: 122.477084
+  Total Trials: 4

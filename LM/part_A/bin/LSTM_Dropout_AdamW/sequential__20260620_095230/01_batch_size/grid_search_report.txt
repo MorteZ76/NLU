@@ -1,0 +1,37 @@
+================================================================================
+GRID SEARCH REPORT: BATCH_SIZE
+================================================================================
+
+Generated: 2026-06-20 10:14:57
+Parameter: batch_size
+
+SUMMARY STATISTICS
+--------------------------------------------------------------------------------
+Total Trials:       4
+Successful Trials:  4
+Failed Trials:      0
+
+Best Metric:        122.477084
+Worst Metric:       123.322235
+Mean Metric:        122.962846
+Std Dev Metric:     0.332987
+Median Metric:      123.026032
+
+DETAILED RESULTS
+--------------------------------------------------------------------------------
+
+#1 | batch_size=16 | Metric: 122.477084 | Status: ✓ PASS
+     best_val_ppl: 132.9697833787965
+     final_test_ppl: 122.47708428551108
+
+#2 | batch_size=64 | Metric: 122.838400 | Status: ✓ PASS
+     best_val_ppl: 133.24638051031323
+     final_test_ppl: 122.83839969764317
+
+#3 | batch_size=32 | Metric: 123.213663 | Status: ✓ PASS
+     best_val_ppl: 134.56059849370766
+     final_test_ppl: 123.2136633237263
+
+#4 | batch_size=128 | Metric: 123.322235 | Status: ✓ PASS
+     best_val_ppl: 134.20614123640559
+     final_test_ppl: 123.32223538541662
