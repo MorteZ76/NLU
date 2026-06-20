@@ -132,14 +132,14 @@ def main():
                 "name": "batch_size",
                 "values": tuning_grid.get("batch_size", [16, 32, 64, 128])
             },
-            {
-                "name": "hidden_size",
-                "values": tuning_grid.get("hidden_size", [150, 200, 300, 400])
-            },
-            {
-                "name": "lr",
-                "values": tuning_grid.get("lr", [0.0001, 0.001, 0.005, 0.01])
-            },
+            # {
+            #     "name": "hidden_size",
+            #     "values": tuning_grid.get("hidden_size", [150, 200, 300, 400])
+            # },
+            # {
+            #     "name": "lr",
+            #     "values": tuning_grid.get("lr", [0.0001, 0.001, 0.005, 0.01])
+            # },
         ]
 
         # Run function for a single trial
