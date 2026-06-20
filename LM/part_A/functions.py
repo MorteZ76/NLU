@@ -3,6 +3,7 @@ import math
 import copy
 import json
 import random
+from datetime import datetime
 import numpy as np
 import torch
 import torch.nn as nn
@@ -191,175 +192,299 @@ def save_experiment(model, hyperparameters, train_losses, dev_losses, name="base
     print(f"[Save] Loss plot visualization saved to: {plot_path}")
 
 
-def grid_search(param_grid: Dict[str, List[Any]],
+def grid_search(param_name: str,
+                param_values: List[Any],
                 base_config: Dict[str, Any],
                 run_fn: Callable[[Dict[str, Any]], Tuple[float, Dict[str, Any]]],
-                results_dir: str = "bin/grid_search") -> List[Dict[str, Any]]:
+                results_dir: str = "bin/grid_search") -> Dict[str, Any]:
     """
-    Perform grid search over specified hyperparameter values with enhanced tracking and visualization.
-
+    Perform grid search over a single hyperparameter with organized result storage.
+    
     Args:
-        param_grid: dict mapping hyperparameter names to lists of values to try.
-        base_config: base configuration dict that will be copied and updated per trial.
-        run_fn: callable that accepts a config dict, runs a single experiment, and
-                returns a tuple (metric, extras) where metric is a scalar to minimize
-                (e.g. validation PPL) and extras is an informational dict.
-        results_dir: directory where a summary JSON of all trials will be saved.
+        param_name: name of the hyperparameter being tuned
+        param_values: list of values to try for this parameter
+        base_config: base configuration dict that will be copied and updated per trial
+        run_fn: callable that accepts a config dict, runs experiment, returns (metric, extras)
+        results_dir: directory to save grid search results
 
     Returns:
-        A list of result dicts sorted by the metric (ascending).
+        Dictionary with best config and results
     """
     os.makedirs(results_dir, exist_ok=True)
-
-    # Build list of (param, values) and produce cartesian product
-    keys = list(param_grid.keys())
-    combos = list(itertools.product(*(param_grid[k] for k in keys)))
-    total_trials = len(combos)
-
+    
+    total_trials = len(param_values)
+    
     print(f"\n{'='*70}")
-    print(f"[Grid Search] Starting hyperparameter grid search")
-    print(f"[Grid Search] Total combinations: {total_trials}")
-    print(f"[Grid Search] Parameters being tuned: {', '.join(keys)}")
+    print(f"[Grid Search] Tuning parameter: {param_name}")
+    print(f"[Grid Search] Values to test: {param_values}")
+    print(f"[Grid Search] Total trials: {total_trials}")
     print(f"[Grid Search] Results directory: {results_dir}")
     print(f"{'='*70}\n")
 
     results: List[Dict[str, Any]] = []
     failed_trials = []
     
-    with tqdm(total=total_trials, desc="Grid Search Progress", unit="trial") as pbar:
-        for idx, combo in enumerate(combos, start=1):
+    with tqdm(total=total_trials, desc=f"Searching {param_name}", unit="trial") as pbar:
+        for idx, param_val in enumerate(param_values, start=1):
             trial_cfg = copy.deepcopy(base_config)
-            trial_name_parts = [trial_cfg.get("experiment_name", "exp")]
+            trial_cfg[param_name] = param_val
+            trial_cfg["experiment_name"] = f"grid_{param_name}={param_val}"
             
-            # Build trial config with current combo values
-            param_str_parts = []
-            for k, v in zip(keys, combo):
-                trial_cfg[k] = v
-                trial_name_parts.append(f"{k}={v}")
-                param_str_parts.append(f"{k}={v}")
-            
-            trial_cfg["experiment_name"] = "grid_" + "__".join(trial_name_parts)
-            param_str = ", ".join(param_str_parts)
-
-            # Update progress bar with current trial info
-            pbar.set_description(f"Trial {idx}/{total_trials} | {param_str[:40]}")
+            pbar.set_description(f"Trial {idx}/{total_trials} | {param_name}={param_val}")
             
             try:
                 metric, extras = run_fn(trial_cfg)
                 status = "✓ PASS" if metric != float('inf') else "✗ FAIL"
             except Exception as e:
-                print(f"\n[Grid] Trial {idx} failed with error: {str(e)[:100]}")
+                print(f"\n[Grid] Trial {idx} failed: {str(e)[:80]}")
                 metric = float('inf')
                 extras = {"error": str(e)}
                 status = "✗ ERROR"
-                failed_trials.append({"trial": idx, "error": str(e)})
+                failed_trials.append({"trial": idx, "value": param_val, "error": str(e)})
 
             result = {
                 "trial": idx,
-                "config": trial_cfg,
+                "param_value": param_val,
                 "metric": metric,
                 "extras": extras,
                 "status": status,
             }
             results.append(result)
-
-            # Save intermediate results periodically
-            with open(os.path.join(results_dir, "latest_results.json"), "w", encoding="utf-8") as f:
-                json.dump(results, f, indent=2, default=str)
-            
             pbar.update(1)
 
-    # Sort ascending by metric (lower is better)
-    results_sorted = sorted(results, key=lambda r: r["metric"]) 
-
-    # Persist final results
-    with open(os.path.join(results_dir, "grid_search_results.json"), "w", encoding="utf-8") as f:
-        json.dump(results_sorted, f, indent=2, default=str)
-
-    # Generate results summary
+    # Sort by metric (ascending - lower is better)
+    results_sorted = sorted(results, key=lambda r: r["metric"])
     successful_results = [r for r in results_sorted if r["metric"] != float('inf')]
     
+    # Print summary
     print(f"\n{'='*70}")
-    print(f"[Grid Search] Complete!")
-    print(f"[Grid Search] Total trials: {total_trials} | Successful: {len(successful_results)} | Failed: {len(failed_trials)}")
+    print(f"[Grid Search] Complete for parameter: {param_name}")
+    print(f"[Grid Search] Successful: {len(successful_results)} | Failed: {len(failed_trials)}")
     
     if successful_results:
-        best_result = successful_results[0]
-        worst_result = successful_results[-1]
-        avg_metric = np.mean([r["metric"] for r in successful_results])
-        std_metric = np.std([r["metric"] for r in successful_results])
-        
+        best = successful_results[0]
+        metrics = [r["metric"] for r in successful_results]
         print(f"\n[Results Summary]")
-        print(f"  Best metric:   {best_result['metric']:.4f}")
-        print(f"  Worst metric:  {worst_result['metric']:.4f}")
-        print(f"  Mean metric:   {avg_metric:.4f} (±{std_metric:.4f})")
-        print(f"\n[Top 3 Configurations]")
-        for rank, result in enumerate(successful_results[:3], 1):
-            config = result["config"]
-            print(f"  {rank}. Metric: {result['metric']:.4f} | {config.get('experiment_name', 'unnamed')}")
-            for k in keys:
-                print(f"     - {k}: {config.get(k)}")
+        print(f"  Best metric:   {best['metric']:.4f} (at {param_name}={best['param_value']})")
+        print(f"  Mean metric:   {np.mean(metrics):.4f}")
+        print(f"  Std metric:    {np.std(metrics):.4f}")
     
-    if failed_trials:
-        print(f"\n[Failed Trials] ({len(failed_trials)} trials)")
-        for failed in failed_trials[:3]:
-            print(f"  Trial {failed['trial']}: {failed['error'][:60]}")
-    
-    print(f"[Grid Search] Results saved to: {results_dir}")
     print(f"{'='*70}\n")
     
-    # Attempt to generate visualization
+    # Generate report and plot
     try:
-        _plot_grid_search_results(results_sorted, results_dir, keys)
+        _generate_single_param_report(results_sorted, results_dir, param_name, successful_results)
     except Exception as e:
-        print(f"[Grid Search] Could not generate visualization: {e}")
+        print(f"[Grid Search] Could not generate report: {e}")
     
-    return results_sorted
+    try:
+        _plot_parameter_performance(results_sorted, results_dir, param_name)
+    except Exception as e:
+        print(f"[Grid Search] Could not generate plot: {e}")
+    
+    return {
+        "best_config": {param_name: successful_results[0]["param_value"]} if successful_results else {},
+        "best_metric": successful_results[0]["metric"] if successful_results else float('inf'),
+        "results": results_sorted
+    }
 
 
-def _plot_grid_search_results(results: List[Dict[str, Any]], results_dir: str, param_keys: List[str]):
-    """
-    Generate visualization plots of grid search results.
+def _generate_single_param_report(results: List[Dict[str, Any]], 
+                                  results_dir: str, 
+                                  param_name: str,
+                                  successful_results: List[Dict[str, Any]]):
+    """Generate text report for single parameter grid search."""
+    report_path = os.path.join(results_dir, "grid_search_report.txt")
     
-    Args:
-        results: sorted list of result dicts
-        results_dir: directory to save plots
-        param_keys: list of hyperparameter names being tuned
-    """
+    with open(report_path, "w", encoding="utf-8") as f:
+        f.write("=" * 80 + "\n")
+        f.write(f"GRID SEARCH REPORT: {param_name.upper()}\n")
+        f.write("=" * 80 + "\n\n")
+        f.write(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        f.write(f"Parameter: {param_name}\n\n")
+        
+        # Summary statistics
+        f.write("SUMMARY STATISTICS\n")
+        f.write("-" * 80 + "\n")
+        f.write(f"Total Trials:       {len(results)}\n")
+        f.write(f"Successful Trials:  {len(successful_results)}\n")
+        f.write(f"Failed Trials:      {len(results) - len(successful_results)}\n\n")
+        
+        if successful_results:
+            metrics = [r["metric"] for r in successful_results]
+            f.write(f"Best Metric:        {min(metrics):.6f}\n")
+            f.write(f"Worst Metric:       {max(metrics):.6f}\n")
+            f.write(f"Mean Metric:        {np.mean(metrics):.6f}\n")
+            f.write(f"Std Dev Metric:     {np.std(metrics):.6f}\n")
+            f.write(f"Median Metric:      {np.median(metrics):.6f}\n\n")
+        
+        # All results
+        f.write("DETAILED RESULTS\n")
+        f.write("-" * 80 + "\n")
+        for rank, result in enumerate(successful_results, 1):
+            f.write(f"\n#{rank} | {param_name}={result['param_value']} | Metric: {result['metric']:.6f} | Status: {result['status']}\n")
+            if result.get('extras'):
+                for key, val in result['extras'].items():
+                    if key != 'error':
+                        f.write(f"     {key}: {val}\n")
+    
+    print(f"[Grid Search] Report saved to: {report_path}")
+
+
+def _plot_parameter_performance(results: List[Dict[str, Any]], 
+                               results_dir: str, 
+                               param_name: str):
+    """Plot parameter values vs performance metric."""
     successful_results = [r for r in results if r["metric"] != float('inf')]
     
     if not successful_results:
         return
     
     try:
+        param_vals = [r["param_value"] for r in successful_results]
         metrics = [r["metric"] for r in successful_results]
-        trial_numbers = list(range(1, len(successful_results) + 1))
         
-        fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+        # Convert to string for plotting (handles various types)
+        param_labels = [str(v) for v in param_vals]
         
-        # Plot 1: Metric over trials (sorted)
-        axes[0].plot(trial_numbers, metrics, marker='o', linestyle='-', linewidth=2, markersize=4)
-        axes[0].set_xlabel("Trial Rank (sorted by metric)")
-        axes[0].set_ylabel("Metric Value")
-        axes[0].set_title("Grid Search Results: Metric by Trial")
-        axes[0].grid(True, alpha=0.3)
-        axes[0].axhline(y=min(metrics), color='r', linestyle='--', alpha=0.5, label=f"Best: {min(metrics):.4f}")
-        axes[0].legend()
+        fig, ax = plt.subplots(figsize=(12, 6))
         
-        # Plot 2: Distribution of metrics
-        axes[1].hist(metrics, bins=max(10, len(successful_results)//3), edgecolor='black', alpha=0.7)
-        axes[1].set_xlabel("Metric Value")
-        axes[1].set_ylabel("Frequency")
-        axes[1].set_title("Distribution of Metrics Across Trials")
-        axes[1].axvline(x=np.mean(metrics), color='r', linestyle='--', label=f"Mean: {np.mean(metrics):.4f}")
-        axes[1].legend()
-        axes[1].grid(True, alpha=0.3, axis='y')
+        # Plot with markers
+        ax.plot(range(len(param_labels)), metrics, marker='o', linestyle='-', 
+               linewidth=2.5, markersize=8, color='#1f77b4', label='Performance')
+        
+        # Highlight best result
+        best_idx = np.argmin(metrics)
+        ax.scatter([best_idx], [metrics[best_idx]], color='red', s=300, zorder=5, 
+                  marker='*', label=f'Best: {metrics[best_idx]:.4f}')
+        
+        ax.set_xticks(range(len(param_labels)))
+        ax.set_xticklabels(param_labels, rotation=45, ha='right')
+        ax.set_xlabel(param_name, fontsize=12, fontweight='bold')
+        ax.set_ylabel("Metric Value", fontsize=12, fontweight='bold')
+        ax.set_title(f"Grid Search: {param_name} vs Performance", fontsize=14, fontweight='bold')
+        ax.grid(True, alpha=0.3)
+        ax.legend(fontsize=11)
         
         plt.tight_layout()
-        plot_path = os.path.join(results_dir, "grid_search_analysis.png")
+        plot_path = os.path.join(results_dir, "parameter_performance.png")
         plt.savefig(plot_path, dpi=150, bbox_inches='tight')
         plt.close()
         
-        print(f"[Grid Search] Visualization saved to: {plot_path}")
+        print(f"[Grid Search] Plot saved to: {plot_path}")
     except Exception as e:
-        print(f"[Grid Search] Visualization generation failed: {e}")
+        print(f"[Grid Search] Plot generation failed: {e}")
+
+
+def sequential_grid_search(param_tuning_order: List[Dict[str, Any]],
+                          base_config: Dict[str, Any],
+                          run_fn: Callable[[Dict[str, Any]], Tuple[float, Dict[str, Any]]],
+                          base_results_dir: str = "bin/grid_search") -> Dict[str, Any]:
+    """
+    Perform sequential grid search, tuning one parameter at a time.
+    
+    Fixes the best value of each parameter before moving to the next.
+    
+    Args:
+        param_tuning_order: List of dicts, each with keys:
+            - "name": parameter name
+            - "values": list of values to try
+            Example: [
+                {"name": "batch_size", "values": [32, 64, 128]},
+                {"name": "hidden_size", "values": [150, 200, 300]},
+                {"name": "lr", "values": [0.001, 0.01, 0.1]}
+            ]
+        base_config: base configuration dict
+        run_fn: callable for running single experiment
+        base_results_dir: base directory for all grid search results
+    
+    Returns:
+        Dictionary with final best config and all search results
+    """
+    # Create timestamped parent directory for all grid searches
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    parent_results_dir = os.path.join(base_results_dir, f"sequential__{timestamp}")
+    os.makedirs(parent_results_dir, exist_ok=True)
+    
+    print(f"\n{'='*70}")
+    print(f"[Sequential Grid Search] Starting sequential hyperparameter tuning")
+    print(f"[Sequential Grid Search] Parameters to tune in order:")
+    for i, param_cfg in enumerate(param_tuning_order, 1):
+        print(f"  {i}. {param_cfg['name']}: {param_cfg['values']}")
+    print(f"{'='*70}\n")
+    
+    # Start with base config
+    current_best_config = copy.deepcopy(base_config)
+    all_search_results = {}
+    
+    # Tune each parameter sequentially
+    for step, param_cfg in enumerate(param_tuning_order, 1):
+        param_name = param_cfg["name"]
+        param_values = param_cfg["values"]
+        
+        print(f"\n[Sequential] Step {step}/{len(param_tuning_order)}: Tuning {param_name}")
+        print(f"[Sequential] Current best config: {current_best_config}")
+        
+        # Create subdirectory for this parameter's search
+        param_results_dir = os.path.join(parent_results_dir, f"{step:02d}_{param_name}")
+        os.makedirs(param_results_dir, exist_ok=True)
+        
+        # Run grid search for this parameter with fixed other parameters
+        search_result = grid_search(
+            param_name=param_name,
+            param_values=param_values,
+            base_config=current_best_config,
+            run_fn=run_fn,
+            results_dir=param_results_dir
+        )
+        
+        all_search_results[param_name] = search_result
+        
+        # Update current best config with the best value found for this parameter
+        if search_result["best_config"]:
+            current_best_config.update(search_result["best_config"])
+            print(f"[Sequential] Fixed {param_name}={search_result['best_config'][param_name]} " 
+                  f"(metric: {search_result['best_metric']:.4f})")
+    
+    # Generate final summary report
+    _generate_sequential_summary(parent_results_dir, all_search_results, current_best_config)
+    
+    print(f"\n{'='*70}")
+    print(f"[Sequential Grid Search] Complete!")
+    print(f"[Sequential Grid Search] Final best config: {current_best_config}")
+    print(f"[Sequential Grid Search] Results saved to: {parent_results_dir}")
+    print(f"{'='*70}\n")
+    
+    return {
+        "best_config": current_best_config,
+        "all_results": all_search_results,
+        "results_dir": parent_results_dir
+    }
+
+
+def _generate_sequential_summary(parent_dir: str, 
+                                 all_results: Dict[str, Any],
+                                 final_config: Dict[str, Any]):
+    """Generate summary report of sequential grid search."""
+    summary_path = os.path.join(parent_dir, "sequential_summary.txt")
+    
+    with open(summary_path, "w", encoding="utf-8") as f:
+        f.write("=" * 80 + "\n")
+        f.write("SEQUENTIAL GRID SEARCH SUMMARY\n")
+        f.write("=" * 80 + "\n\n")
+        f.write(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+        
+        f.write("FINAL BEST CONFIGURATION\n")
+        f.write("-" * 80 + "\n")
+        for key, val in final_config.items():
+            f.write(f"  {key}: {val}\n")
+        
+        f.write("\n\nSEARCH PROGRESSION\n")
+        f.write("-" * 80 + "\n")
+        for step, (param_name, result) in enumerate(all_results.items(), 1):
+            f.write(f"\nStep {step}: {param_name}\n")
+            f.write(f"  Best Value: {result['best_config'].get(param_name, 'N/A')}\n")
+            f.write(f"  Best Metric: {result['best_metric']:.6f}\n")
+            f.write(f"  Total Trials: {len(result['results'])}\n")
+    
+    print(f"[Sequential] Summary saved to: {summary_path}")

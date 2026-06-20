@@ -14,7 +14,7 @@ from torch.utils.data import DataLoader
 # Import modular project blocks
 from utils import download_ptb, read_file, Lang, PennTreeBank, collate_fn
 from model import LM_RNN, LM_LSTM
-from functions import set_seed, init_weights, train_loop, eval_loop, save_experiment, grid_search
+from functions import set_seed, init_weights, train_loop, eval_loop, save_experiment, sequential_grid_search
 
 def main():
     # 0. Load configuration
@@ -121,21 +121,30 @@ def main():
         print(f"{'='*48}")
         return
 
-    # If tuning is requested, perform grid search and exit
+    # If tuning is requested, perform sequential grid search and exit
     if args.tune:
-        # param grid can be provided in config under 'tuning_grid'
-        param_grid = config.get('tuning_grid')
-        if param_grid is None:
-            # sensible default grid
-            param_grid = {
-                "lr": [config.get('lr', 0.001), 0.01],
-                "batch_size": [32, config.get('batch_size', 64)],
-                "hidden_size": [config.get('hidden_size', 200), config.get('hidden_size', 200)*2]
-            }
+        # Define parameters to tune sequentially
+        # You can configure the values per parameter in the tuning_grid config or use defaults
+        tuning_grid = config.get('tuning_grid', {})
+        
+        param_tuning_order = [
+            {
+                "name": "batch_size",
+                "values": tuning_grid.get("batch_size", [32, 64, 128])
+            },
+            {
+                "name": "hidden_size",
+                "values": tuning_grid.get("hidden_size", [150, 200, 300])
+            },
+            {
+                "name": "lr",
+                "values": tuning_grid.get("lr", [0.0001, 0.001, 0.01])
+            },
+        ]
 
-        # run function for a single trial
+        # Run function for a single trial
         def run_single_trial(trial_cfg):
-            # local reproducibility
+            # Local reproducibility
             set_seed(1234)
             device_local = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
@@ -187,7 +196,7 @@ def main():
             criterion_train_local = nn.CrossEntropyLoss(ignore_index=pad_idx)
             criterion_eval_local = nn.CrossEntropyLoss(ignore_index=pad_idx, reduction='sum')
 
-            # training loop with early stopping
+            # Training loop with early stopping
             best_ppl_local = math.inf
             best_state_local = None
             current_pat = patience_trial
@@ -204,7 +213,7 @@ def main():
                     if current_pat <= 0:
                         break
 
-            # restore best model and evaluate on test
+            # Restore best model and evaluate on test
             if trial_cfg.get('model_type', model_type).upper() == 'LSTM':
                 best_model_local = LM_LSTM(emb_sz, hid_sz, vocab_len, pad_index=pad_idx).to(device_local)
             else:
@@ -213,29 +222,30 @@ def main():
 
             final_ppl_local, _ = eval_loop(test_loader_local, criterion_eval_local, best_model_local)
 
-            # save experiment artifacts for this trial
+            # Save experiment artifacts for this trial
             hyperparams = {k: trial_cfg.get(k, base) for k, base in [("emb_size", emb_size), ("hidden_size", hid_size), ("lr", lr), ("batch_size", batch_size), ("optimizer", optimizer_name), ("model_type", model_type), ("patience", patience), ("clip", clip), ("n_epochs", n_epochs)]}
             save_experiment(best_model_local, hyperparams, [], [], name=trial_cfg['experiment_name'])
 
             extras = {"best_val_ppl": best_ppl_local, "final_test_ppl": final_ppl_local}
             return final_ppl_local, extras
 
-        # run grid search
-        results = grid_search(param_grid, config, run_single_trial, results_dir=os.path.join("bin", config.get('experiment_name','grid')))
+        # Run sequential grid search
+        search_results = sequential_grid_search(
+            param_tuning_order=param_tuning_order,
+            base_config=config,
+            run_fn=run_single_trial,
+            base_results_dir=os.path.join("bin", config.get('experiment_name', 'grid_search'))
+        )
         
-        # Display detailed results
-        successful = [r for r in results if r['metric'] != float('inf')]
-        if successful:
-            print("\n" + "="*70)
-            print("BEST CONFIGURATIONS FROM GRID SEARCH")
-            print("="*70)
-            for rank, result in enumerate(successful[:5], 1):
-                cfg = result['config']
-                print(f"\n#{rank} | Metric: {result['metric']:.4f}")
-                for key in param_grid.keys():
-                    if key in cfg:
-                        print(f"     {key}: {cfg[key]}")
-            print("="*70 + "\n")
+        # Display final results
+        print("\n" + "="*70)
+        print("SEQUENTIAL GRID SEARCH COMPLETE")
+        print("="*70)
+        print(f"Final Best Configuration:")
+        for key, val in search_results['best_config'].items():
+            print(f"  {key}: {val}")
+        print(f"Results saved to: {search_results['results_dir']}")
+        print("="*70 + "\n")
         
         return
 
