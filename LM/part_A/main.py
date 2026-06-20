@@ -14,7 +14,7 @@ from torch.utils.data import DataLoader
 # Import modular project blocks
 from utils import download_ptb, read_file, Lang, PennTreeBank, collate_fn
 from model import LM_RNN, LM_LSTM
-from functions import set_seed, init_weights, train_loop, eval_loop, save_experiment
+from functions import set_seed, init_weights, train_loop, eval_loop, save_experiment, grid_search
 
 def main():
     # 0. Load configuration
@@ -37,6 +37,11 @@ def main():
         type=str, 
         default=f"bin/{config['experiment_name']}/{config['experiment_name']}.pt", 
         help="Relative path to a pre-trained PyTorch weight checkpoint (.pt)."
+    )
+    parser.add_argument(
+        "--tune",
+        action="store_true",
+        help="Run hyperparameter grid search using 'tuning_grid' in config.json or a default grid."
     )
     args = parser.parse_args()
 
@@ -114,6 +119,124 @@ def main():
         print(f"Validation Perplexity (PPL): {val_ppl:.3f}")
         print(f"Test Set Perplexity (PPL):   {test_ppl:.3f}")
         print(f"{'='*48}")
+        return
+
+    # If tuning is requested, perform grid search and exit
+    if args.tune:
+        # param grid can be provided in config under 'tuning_grid'
+        param_grid = config.get('tuning_grid')
+        if param_grid is None:
+            # sensible default grid
+            param_grid = {
+                "lr": [config.get('lr', 0.001), 0.01],
+                "batch_size": [32, config.get('batch_size', 64)],
+                "hidden_size": [config.get('hidden_size', 200), config.get('hidden_size', 200)*2]
+            }
+
+        # run function for a single trial
+        def run_single_trial(trial_cfg):
+            # local reproducibility
+            set_seed(1234)
+            device_local = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+
+            # Prepare datasets and loaders with trial params
+            train_dataset_local = PennTreeBank(train_raw, lang)
+            dev_dataset_local = PennTreeBank(dev_raw, lang)
+            test_dataset_local = PennTreeBank(test_raw, lang)
+
+            train_loader_local = DataLoader(
+                train_dataset_local,
+                batch_size=trial_cfg.get('batch_size', batch_size),
+                collate_fn=partial(collate_fn, pad_token=pad_idx, device=device_local),
+                shuffle=True
+            )
+            dev_loader_local = DataLoader(
+                dev_dataset_local,
+                batch_size=trial_cfg.get('batch_size', batch_size),
+                collate_fn=partial(collate_fn, pad_token=pad_idx, device=device_local)
+            )
+            test_loader_local = DataLoader(
+                test_dataset_local,
+                batch_size=trial_cfg.get('batch_size', batch_size),
+                collate_fn=partial(collate_fn, pad_token=pad_idx, device=device_local)
+            )
+
+            emb_sz = trial_cfg.get('emb_size', emb_size)
+            hid_sz = trial_cfg.get('hidden_size', hid_size)
+            lr_trial = trial_cfg.get('lr', lr)
+            clip_trial = trial_cfg.get('clip', clip)
+            n_epochs_trial = trial_cfg.get('n_epochs', n_epochs)
+            patience_trial = trial_cfg.get('patience', patience)
+
+            # Model selection
+            if trial_cfg.get('model_type', model_type).upper() == 'LSTM':
+                model_local = LM_LSTM(emb_sz, hid_sz, vocab_len, pad_index=pad_idx).to(device_local)
+            else:
+                model_local = LM_RNN(emb_sz, hid_sz, vocab_len, pad_index=pad_idx).to(device_local)
+            model_local.apply(init_weights)
+
+            # Optimizer selection
+            opt_name = trial_cfg.get('optimizer', optimizer_name).upper()
+            if opt_name == 'SGD':
+                optimizer_local = optim.SGD(model_local.parameters(), lr=lr_trial)
+            elif opt_name == 'ADAMW':
+                optimizer_local = optim.AdamW(model_local.parameters(), lr=lr_trial)
+            else:
+                optimizer_local = optim.Adam(model_local.parameters(), lr=lr_trial)
+
+            criterion_train_local = nn.CrossEntropyLoss(ignore_index=pad_idx)
+            criterion_eval_local = nn.CrossEntropyLoss(ignore_index=pad_idx, reduction='sum')
+
+            # training loop with early stopping
+            best_ppl_local = math.inf
+            best_state_local = None
+            current_pat = patience_trial
+
+            for epoch_local in range(1, n_epochs_trial + 1):
+                _ = train_loop(train_loader_local, optimizer_local, criterion_train_local, model_local, clip_trial)
+                ppl_dev_local, loss_dev_local = eval_loop(dev_loader_local, criterion_eval_local, model_local)
+                if ppl_dev_local < best_ppl_local:
+                    best_ppl_local = ppl_dev_local
+                    best_state_local = {k: v.cpu() for k, v in model_local.state_dict().items()}
+                    current_pat = patience_trial
+                else:
+                    current_pat -= 1
+                    if current_pat <= 0:
+                        break
+
+            # restore best model and evaluate on test
+            if trial_cfg.get('model_type', model_type).upper() == 'LSTM':
+                best_model_local = LM_LSTM(emb_sz, hid_sz, vocab_len, pad_index=pad_idx).to(device_local)
+            else:
+                best_model_local = LM_RNN(emb_sz, hid_sz, vocab_len, pad_index=pad_idx).to(device_local)
+            best_model_local.load_state_dict(best_state_local)
+
+            final_ppl_local, _ = eval_loop(test_loader_local, criterion_eval_local, best_model_local)
+
+            # save experiment artifacts for this trial
+            hyperparams = {k: trial_cfg.get(k, base) for k, base in [("emb_size", emb_size), ("hidden_size", hid_size), ("lr", lr), ("batch_size", batch_size), ("optimizer", optimizer_name), ("model_type", model_type), ("patience", patience), ("clip", clip), ("n_epochs", n_epochs)]}
+            save_experiment(best_model_local, hyperparams, [], [], name=trial_cfg['experiment_name'])
+
+            extras = {"best_val_ppl": best_ppl_local, "final_test_ppl": final_ppl_local}
+            return final_ppl_local, extras
+
+        # run grid search
+        results = grid_search(param_grid, config, run_single_trial, results_dir=os.path.join("bin", config.get('experiment_name','grid')))
+        
+        # Display detailed results
+        successful = [r for r in results if r['metric'] != float('inf')]
+        if successful:
+            print("\n" + "="*70)
+            print("BEST CONFIGURATIONS FROM GRID SEARCH")
+            print("="*70)
+            for rank, result in enumerate(successful[:5], 1):
+                cfg = result['config']
+                print(f"\n#{rank} | Metric: {result['metric']:.4f}")
+                for key in param_grid.keys():
+                    if key in cfg:
+                        print(f"     {key}: {cfg[key]}")
+            print("="*70 + "\n")
+        
         return
 
     # ================= STANDARD TRAINING MODE =================

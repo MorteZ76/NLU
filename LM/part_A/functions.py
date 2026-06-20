@@ -7,6 +7,9 @@ import numpy as np
 import torch
 import torch.nn as nn
 import matplotlib.pyplot as plt
+import itertools
+from typing import Callable, Dict, Any, List, Tuple
+from tqdm import tqdm
 
 def set_seed(seed=1234):
     """
@@ -186,3 +189,177 @@ def save_experiment(model, hyperparameters, train_losses, dev_losses, name="base
     plt.savefig(plot_path, dpi=200, bbox_inches='tight')
     plt.close()
     print(f"[Save] Loss plot visualization saved to: {plot_path}")
+
+
+def grid_search(param_grid: Dict[str, List[Any]],
+                base_config: Dict[str, Any],
+                run_fn: Callable[[Dict[str, Any]], Tuple[float, Dict[str, Any]]],
+                results_dir: str = "bin/grid_search") -> List[Dict[str, Any]]:
+    """
+    Perform grid search over specified hyperparameter values with enhanced tracking and visualization.
+
+    Args:
+        param_grid: dict mapping hyperparameter names to lists of values to try.
+        base_config: base configuration dict that will be copied and updated per trial.
+        run_fn: callable that accepts a config dict, runs a single experiment, and
+                returns a tuple (metric, extras) where metric is a scalar to minimize
+                (e.g. validation PPL) and extras is an informational dict.
+        results_dir: directory where a summary JSON of all trials will be saved.
+
+    Returns:
+        A list of result dicts sorted by the metric (ascending).
+    """
+    os.makedirs(results_dir, exist_ok=True)
+
+    # Build list of (param, values) and produce cartesian product
+    keys = list(param_grid.keys())
+    combos = list(itertools.product(*(param_grid[k] for k in keys)))
+    total_trials = len(combos)
+
+    print(f"\n{'='*70}")
+    print(f"[Grid Search] Starting hyperparameter grid search")
+    print(f"[Grid Search] Total combinations: {total_trials}")
+    print(f"[Grid Search] Parameters being tuned: {', '.join(keys)}")
+    print(f"[Grid Search] Results directory: {results_dir}")
+    print(f"{'='*70}\n")
+
+    results: List[Dict[str, Any]] = []
+    failed_trials = []
+    
+    with tqdm(total=total_trials, desc="Grid Search Progress", unit="trial") as pbar:
+        for idx, combo in enumerate(combos, start=1):
+            trial_cfg = copy.deepcopy(base_config)
+            trial_name_parts = [trial_cfg.get("experiment_name", "exp")]
+            
+            # Build trial config with current combo values
+            param_str_parts = []
+            for k, v in zip(keys, combo):
+                trial_cfg[k] = v
+                trial_name_parts.append(f"{k}={v}")
+                param_str_parts.append(f"{k}={v}")
+            
+            trial_cfg["experiment_name"] = "grid_" + "__".join(trial_name_parts)
+            param_str = ", ".join(param_str_parts)
+
+            # Update progress bar with current trial info
+            pbar.set_description(f"Trial {idx}/{total_trials} | {param_str[:40]}")
+            
+            try:
+                metric, extras = run_fn(trial_cfg)
+                status = "✓ PASS" if metric != float('inf') else "✗ FAIL"
+            except Exception as e:
+                print(f"\n[Grid] Trial {idx} failed with error: {str(e)[:100]}")
+                metric = float('inf')
+                extras = {"error": str(e)}
+                status = "✗ ERROR"
+                failed_trials.append({"trial": idx, "error": str(e)})
+
+            result = {
+                "trial": idx,
+                "config": trial_cfg,
+                "metric": metric,
+                "extras": extras,
+                "status": status,
+            }
+            results.append(result)
+
+            # Save intermediate results periodically
+            with open(os.path.join(results_dir, "latest_results.json"), "w", encoding="utf-8") as f:
+                json.dump(results, f, indent=2, default=str)
+            
+            pbar.update(1)
+
+    # Sort ascending by metric (lower is better)
+    results_sorted = sorted(results, key=lambda r: r["metric"]) 
+
+    # Persist final results
+    with open(os.path.join(results_dir, "grid_search_results.json"), "w", encoding="utf-8") as f:
+        json.dump(results_sorted, f, indent=2, default=str)
+
+    # Generate results summary
+    successful_results = [r for r in results_sorted if r["metric"] != float('inf')]
+    
+    print(f"\n{'='*70}")
+    print(f"[Grid Search] Complete!")
+    print(f"[Grid Search] Total trials: {total_trials} | Successful: {len(successful_results)} | Failed: {len(failed_trials)}")
+    
+    if successful_results:
+        best_result = successful_results[0]
+        worst_result = successful_results[-1]
+        avg_metric = np.mean([r["metric"] for r in successful_results])
+        std_metric = np.std([r["metric"] for r in successful_results])
+        
+        print(f"\n[Results Summary]")
+        print(f"  Best metric:   {best_result['metric']:.4f}")
+        print(f"  Worst metric:  {worst_result['metric']:.4f}")
+        print(f"  Mean metric:   {avg_metric:.4f} (±{std_metric:.4f})")
+        print(f"\n[Top 3 Configurations]")
+        for rank, result in enumerate(successful_results[:3], 1):
+            config = result["config"]
+            print(f"  {rank}. Metric: {result['metric']:.4f} | {config.get('experiment_name', 'unnamed')}")
+            for k in keys:
+                print(f"     - {k}: {config.get(k)}")
+    
+    if failed_trials:
+        print(f"\n[Failed Trials] ({len(failed_trials)} trials)")
+        for failed in failed_trials[:3]:
+            print(f"  Trial {failed['trial']}: {failed['error'][:60]}")
+    
+    print(f"[Grid Search] Results saved to: {results_dir}")
+    print(f"{'='*70}\n")
+    
+    # Attempt to generate visualization
+    try:
+        _plot_grid_search_results(results_sorted, results_dir, keys)
+    except Exception as e:
+        print(f"[Grid Search] Could not generate visualization: {e}")
+    
+    return results_sorted
+
+
+def _plot_grid_search_results(results: List[Dict[str, Any]], results_dir: str, param_keys: List[str]):
+    """
+    Generate visualization plots of grid search results.
+    
+    Args:
+        results: sorted list of result dicts
+        results_dir: directory to save plots
+        param_keys: list of hyperparameter names being tuned
+    """
+    successful_results = [r for r in results if r["metric"] != float('inf')]
+    
+    if not successful_results:
+        return
+    
+    try:
+        metrics = [r["metric"] for r in successful_results]
+        trial_numbers = list(range(1, len(successful_results) + 1))
+        
+        fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+        
+        # Plot 1: Metric over trials (sorted)
+        axes[0].plot(trial_numbers, metrics, marker='o', linestyle='-', linewidth=2, markersize=4)
+        axes[0].set_xlabel("Trial Rank (sorted by metric)")
+        axes[0].set_ylabel("Metric Value")
+        axes[0].set_title("Grid Search Results: Metric by Trial")
+        axes[0].grid(True, alpha=0.3)
+        axes[0].axhline(y=min(metrics), color='r', linestyle='--', alpha=0.5, label=f"Best: {min(metrics):.4f}")
+        axes[0].legend()
+        
+        # Plot 2: Distribution of metrics
+        axes[1].hist(metrics, bins=max(10, len(successful_results)//3), edgecolor='black', alpha=0.7)
+        axes[1].set_xlabel("Metric Value")
+        axes[1].set_ylabel("Frequency")
+        axes[1].set_title("Distribution of Metrics Across Trials")
+        axes[1].axvline(x=np.mean(metrics), color='r', linestyle='--', label=f"Mean: {np.mean(metrics):.4f}")
+        axes[1].legend()
+        axes[1].grid(True, alpha=0.3, axis='y')
+        
+        plt.tight_layout()
+        plot_path = os.path.join(results_dir, "grid_search_analysis.png")
+        plt.savefig(plot_path, dpi=150, bbox_inches='tight')
+        plt.close()
+        
+        print(f"[Grid Search] Visualization saved to: {plot_path}")
+    except Exception as e:
+        print(f"[Grid Search] Visualization generation failed: {e}")
