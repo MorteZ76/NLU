@@ -130,15 +130,15 @@ def main():
         param_tuning_order = [
             {
                 "name": "batch_size",
-                "values": tuning_grid.get("batch_size", [32, 64, 128])
+                "values": tuning_grid.get("batch_size", [16, 32, 64, 128])
             },
             {
                 "name": "hidden_size",
-                "values": tuning_grid.get("hidden_size", [150, 200, 300])
+                "values": tuning_grid.get("hidden_size", [150, 200, 300, 400])
             },
             {
                 "name": "lr",
-                "values": tuning_grid.get("lr", [0.0001, 0.001, 0.01])
+                "values": tuning_grid.get("lr", [0.0001, 0.001, 0.005, 0.01])
             },
         ]
 
