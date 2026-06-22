@@ -135,12 +135,18 @@ def main():
             # },
             # {
             #     "name": "hidden_size",
-            #     # 400 was the best so we moved from 
+            #     # 400 was the best so we moved from 150 to 400
             #     "values": tuning_grid.get("hidden_size", [100, 200, 300, 400])
             # },
+            # {
+            #     "name": "lr",
+            #     # 0.001 was the best so we kept the same value
+            #     "values": tuning_grid.get("lr", [0.0001, 0.001, 0.005, 0.01])
+            # },
             {
-                "name": "lr",
-                "values": tuning_grid.get("lr", [0.0001, 0.001, 0.005, 0.01])
+                "name": "emb_size",
+                # 400 was the best so we moved from 150 to 400
+                "values": tuning_grid.get("emb_size", [100, 200, 300, 400])
             },
         ]
 
