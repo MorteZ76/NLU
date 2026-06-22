@@ -1,0 +1,37 @@
+================================================================================
+GRID SEARCH REPORT: LR
+================================================================================
+
+Generated: 2026-06-22 07:00:25
+Parameter: lr
+
+SUMMARY STATISTICS
+--------------------------------------------------------------------------------
+Total Trials:       4
+Successful Trials:  4
+Failed Trials:      0
+
+Best Metric:        117.881123
+Worst Metric:       168.039615
+Mean Metric:        140.498865
+Std Dev Metric:     18.779203
+Median Metric:      138.037360
+
+DETAILED RESULTS
+--------------------------------------------------------------------------------
+
+#1 | lr=0.001 | Metric: 117.881123 | Status: ✓ PASS
+     best_val_ppl: 125.86106352317204
+     final_test_ppl: 117.88112333356594
+
+#2 | lr=0.005 | Metric: 130.022977 | Status: ✓ PASS
+     best_val_ppl: 138.25874771754437
+     final_test_ppl: 130.02297748587387
+
+#3 | lr=0.01 | Metric: 146.051743 | Status: ✓ PASS
+     best_val_ppl: 157.23787845747228
+     final_test_ppl: 146.05174272668253
+
+#4 | lr=0.0001 | Metric: 168.039615 | Status: ✓ PASS
+     best_val_ppl: 178.61988930039323
+     final_test_ppl: 168.0396147225415
