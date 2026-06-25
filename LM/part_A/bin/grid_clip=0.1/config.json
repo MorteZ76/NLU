@@ -1,0 +1,11 @@
+{
+    "emb_size": 400,
+    "hidden_size": 400,
+    "lr": 0.001,
+    "batch_size": 64,
+    "optimizer": "AdamW",
+    "model_type": "LSTM",
+    "patience": 3,
+    "clip": 0.1,
+    "n_epochs": 20
+}

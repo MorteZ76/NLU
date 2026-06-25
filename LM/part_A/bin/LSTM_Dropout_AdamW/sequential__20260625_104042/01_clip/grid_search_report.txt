@@ -1,0 +1,49 @@
+================================================================================
+GRID SEARCH REPORT: CLIP
+================================================================================
+
+Generated: 2026-06-25 11:23:53
+Parameter: clip
+
+SUMMARY STATISTICS
+--------------------------------------------------------------------------------
+Total Trials:       7
+Successful Trials:  7
+Failed Trials:      0
+
+Best Metric:        115.731595
+Worst Metric:       116.656177
+Mean Metric:        116.501249
+Std Dev Metric:     0.316188
+Median Metric:      116.656158
+
+DETAILED RESULTS
+--------------------------------------------------------------------------------
+
+#1 | clip=0.1 | Metric: 115.731595 | Status: ✓ PASS
+     best_val_ppl: 123.42897793989685
+     final_test_ppl: 115.73159548102176
+
+#2 | clip=0.5 | Metric: 116.565999 | Status: ✓ PASS
+     best_val_ppl: 124.78752617810069
+     final_test_ppl: 116.56599888183334
+
+#3 | clip=1 | Metric: 116.586478 | Status: ✓ PASS
+     best_val_ppl: 125.58400589531702
+     final_test_ppl: 116.58647825213086
+
+#4 | clip=10 | Metric: 116.656158 | Status: ✓ PASS
+     best_val_ppl: 125.28562844775446
+     final_test_ppl: 116.65615790824336
+
+#5 | clip=3 | Metric: 116.656167 | Status: ✓ PASS
+     best_val_ppl: 125.28563626948514
+     final_test_ppl: 116.6561665969543
+
+#6 | clip=50 | Metric: 116.656169 | Status: ✓ PASS
+     best_val_ppl: 125.28563148953847
+     final_test_ppl: 116.65616949319138
+
+#7 | clip=5 | Metric: 116.656177 | Status: ✓ PASS
+     best_val_ppl: 125.2856453948383
+     final_test_ppl: 116.65617709581419
