@@ -2,7 +2,7 @@
   "experiment_name": "LSTM_Dropout_AdamW",
   "model_type": "LSTM",
   "optimizer": "AdamW",
-  "emb_size": 300,
+  "emb_size": 400,
   "hidden_size": 400,
   "lr": 0.001,
   "patience": 3,
