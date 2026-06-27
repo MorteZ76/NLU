@@ -1,0 +1,15 @@
+{
+    "emb_size": 200,
+    "hidden_size": 200,
+    "lr": 10,
+    "batch_size": 64,
+    "optimizer": "NT-ASGD",
+    "model_type": "RNN",
+    "patience": 3,
+    "clip": 0.1,
+    "n_epochs": 20,
+    "weight_tying": true,
+    "emb_drop": 0.1,
+    "out_drop": 0.1,
+    "non_mono": 5
+}

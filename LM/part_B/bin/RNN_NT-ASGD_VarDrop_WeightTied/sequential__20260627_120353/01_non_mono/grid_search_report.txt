@@ -1,0 +1,41 @@
+================================================================================
+GRID SEARCH REPORT: NON_MONO
+================================================================================
+
+Generated: 2026-06-27 12:34:24
+Parameter: non_mono
+
+SUMMARY STATISTICS
+--------------------------------------------------------------------------------
+Total Trials:       5
+Successful Trials:  5
+Failed Trials:      0
+
+Best Metric:        128.728790
+Worst Metric:       136.009371
+Mean Metric:        134.553253
+Std Dev Metric:     2.912231
+Median Metric:      136.009368
+
+DETAILED RESULTS
+--------------------------------------------------------------------------------
+
+#1 | non_mono=1 | Metric: 128.728790 | Status: ✓ PASS
+     best_val_ppl: 132.97394233187768
+     final_test_ppl: 128.72879029030156
+
+#2 | non_mono=5 | Metric: 136.009365 | Status: ✓ PASS
+     best_val_ppl: 140.88668960001667
+     final_test_ppl: 136.00936461083185
+
+#3 | non_mono=4 | Metric: 136.009368 | Status: ✓ PASS
+     best_val_ppl: 140.88667005396633
+     final_test_ppl: 136.00936840964337
+
+#4 | non_mono=2 | Metric: 136.009371 | Status: ✓ PASS
+     best_val_ppl: 140.88667054261762
+     final_test_ppl: 136.00937094218443
+
+#5 | non_mono=3 | Metric: 136.009371 | Status: ✓ PASS
+     best_val_ppl: 140.88667249722246
+     final_test_ppl: 136.0093713642746
