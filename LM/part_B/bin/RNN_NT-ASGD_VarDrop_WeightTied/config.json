@@ -1,0 +1,19 @@
+{
+    "experiment_name": "RNN_NT-ASGD_VarDrop_WeightTied",
+    "model_type": "RNN",
+    "optimizer": "NT-ASGD",
+    "emb_size": 200,
+    "hidden_size": 200,
+    "lr": 10,
+    "patience": 3,
+    "batch_size": 64,
+    "clip": 0.1,
+    "n_epochs": 20,
+    "weight_tying": true,
+    "emb_drop": 0.1,
+    "out_drop": 0.1,
+    "non_mono": 3,
+    "vocabulary_size": 10001,
+    "best_val_ppl": 140.88666956531515,
+    "final_test_ppl": 136.00937009800407
+}
