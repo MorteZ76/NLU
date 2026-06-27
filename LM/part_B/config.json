@@ -10,6 +10,6 @@
   "clip": 0.1,
   "n_epochs": 20,
   "weight_tying": true,
-  "emb_drop": 0.45,
-  "out_drop": 0.45
+  "emb_drop": 0.1,
+  "out_drop": 0.1
 }

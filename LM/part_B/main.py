@@ -172,16 +172,16 @@ def main():
             #     # ??? was the best so we moved from ??? to ???
             #     "values": tuning_grid.get("clip", [0.1, 0.5, 1, 3, 5, 10, 50])
             # },
-            {
-                "name": "emb_drop",
-                # ??? was the best so we moved from ??? to ???
-                "values": tuning_grid.get("emb_drop", [0.1, 0.3, 0.5])
-            },
-            {
-                "name": "out_drop",
-                # ??? was the best so we moved from ??? to ???
-                "values": tuning_grid.get("out_drop", [0.1, 0.3, 0.5])
-            },
+            # {
+            #     "name": "emb_drop",
+            #     # ??? was the best so we moved from 0.45 to 0.1
+            #     "values": tuning_grid.get("emb_drop", [0.1, 0.3, 0.5])
+            # },
+            # {
+            #     "name": "out_drop",
+            #     # ??? was the best so we moved from 0.45 to 0.1
+            #     "values": tuning_grid.get("out_drop", [0.1, 0.3, 0.5])
+            # },
         ]
 
         def run_single_trial(trial_cfg):
