@@ -183,6 +183,10 @@ def main():
             #     # 0.1 was the best so we moved from 0.45 to 0.1
             #     "values": tuning_grid.get("out_drop", [0.1, 0.3, 0.5])
             # },
+            {
+                "name": "non_mono",
+                "values": tuning_grid.get("non_mono", [1, 2, 3, 4, 5])
+            },
         ]
 
         def run_single_trial(trial_cfg):
