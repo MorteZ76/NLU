@@ -4,7 +4,7 @@
   "optimizer": "SGD",
   "emb_size": 400,
   "hidden_size": 400,
-  "lr": 0.001,
+  "lr": 5,
   "patience": 3,
   "batch_size": 64,
   "clip": 0.1,
