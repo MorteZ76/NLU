@@ -2,7 +2,7 @@
   "experiment_name": "RNN_NT-ASGD_VarDrop_WeightTied",
   "model_type": "RNN",
   "optimizer": "NT-ASGD",
-  "non_mono": 3,
+  "non_mono": 1,
   "emb_size": 200,
   "hidden_size": 200,
   "lr": 10,
