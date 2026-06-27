@@ -1,0 +1,11 @@
+{
+    "emb_size": 400,
+    "hidden_size": 400,
+    "lr": 0.05,
+    "batch_size": 64,
+    "optimizer": "SGD",
+    "model_type": "RNN",
+    "patience": 3,
+    "clip": 0.1,
+    "n_epochs": 20
+}
