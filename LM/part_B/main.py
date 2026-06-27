@@ -92,6 +92,19 @@ def main():
     n_epochs = config['n_epochs']
     weight_tying = config.get('weight_tying', False)
 
+    def resolve_model_sizes(emb_value, hidden_value):
+        if weight_tying and emb_value != hidden_value:
+            target_size = emb_value if emb_value is not None else hidden_value
+            if hidden_value is None:
+                hidden_value = target_size
+            if emb_value is None:
+                emb_value = target_size
+            print(f"[Config] Weight tying enabled; aligning emb_size={target_size} and hidden_size={target_size}.")
+            return target_size, target_size
+        return emb_value, hidden_value
+
+    emb_size, hid_size = resolve_model_sizes(emb_size, hid_size)
+
     criterion_eval = nn.CrossEntropyLoss(ignore_index=pad_idx, reduction='sum')
 
     # ================= EVALUATION ONLY MODE =================
@@ -143,11 +156,11 @@ def main():
             #     "values": tuning_grid.get("lr", [5, 10, 50])
 
             # },
-            # {
-            #     "name": "emb_size",
-            #     # ??? was the best so we moved from ??? to ???
-            #     "values": tuning_grid.get("emb_size", [100, 200, 300, 400])
-            # },
+            {
+                "name": "emb_size",
+                # ??? was the best so we moved from ??? to ???
+                "values": tuning_grid.get("emb_size", [100, 200, 300, 400])
+            },
 
             # {
             #     "name": "clip",
@@ -186,6 +199,7 @@ def main():
 
             emb_sz = trial_cfg.get('emb_size', emb_size)
             hid_sz = trial_cfg.get('hidden_size', hid_size)
+            emb_sz, hid_sz = resolve_model_sizes(emb_sz, hid_sz)
             lr_trial = trial_cfg.get('lr', lr)
             clip_trial = trial_cfg.get('clip', clip)
             n_epochs_trial = trial_cfg.get('n_epochs', n_epochs)
@@ -315,7 +329,12 @@ def main():
 
     # Final evaluate run across testing dataset
     final_ppl, _ = eval_loop(test_loader, criterion_eval, best_model)
-    print(f"\n{'='*48}\nTest Set Evaluation Results:\n{model_type} Perplexity (PPL): {final_ppl:.3f}\n{'='*48}")
+    print(f"\n{'='*48}")
+    print(f"Single Run Evaluation Results:")
+    print(f"Best Validation Perplexity (PPL): {best_ppl:.3f}")
+    print(f"Final Test Set Perplexity (PPL): {final_ppl:.3f}")
+    print(f"{model_type} Test Perplexity (PPL): {final_ppl:.3f}")
+    print(f"{'='*48}")
 
     # Structuring and Saving Run Metadata & Metrics
     config_details = {
