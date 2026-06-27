@@ -13,7 +13,7 @@ class LM_RNN(nn.Module):
       ---> Output (Logits) Permuted to [Batch, VocabSize, SeqLen] (as expected by CrossEntropyLoss)
     """
     def __init__(self, emb_size, hidden_size, output_size, pad_index=0, out_dropout=0.1,
-                 emb_dropout=0.1, n_layers=1):
+                 emb_dropout=0.1, n_layers=1, weight_tying=False):
         """
         Defines the layer blocks required for vanilla recurrence processing.
         
@@ -25,8 +25,11 @@ class LM_RNN(nn.Module):
             out_dropout (float): Dropout probability for regularization.
             emb_dropout (float): Dropout probability applied to inputs.
             n_layers (int): Recurrent layer stack height.
+            weight_tying (bool): Share embedding and output projection weights.
         """
         super(LM_RNN, self).__init__()
+
+        self.weight_tying = weight_tying
         
         # Continuous representation space for discrete tokens
         self.embedding = nn.Embedding(output_size, emb_size, padding_idx=pad_index)
@@ -37,6 +40,11 @@ class LM_RNN(nn.Module):
         
         # Linear decoder projection mapping back to vocabulary space logits
         self.output = nn.Linear(hidden_size, output_size)
+
+        if self.weight_tying:
+            if emb_size != hidden_size:
+                raise ValueError("Weight tying requires emb_size == hidden_size.")
+            self.output.weight = self.embedding.weight
 
     def forward(self, input_sequence):
         """

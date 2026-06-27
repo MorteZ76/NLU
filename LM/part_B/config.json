@@ -1,5 +1,5 @@
 {
-  "experiment_name": "RNN_SGD_NoDrop",
+  "experiment_name": "RNN_SGD_NoDrop_WeightTied",
   "model_type": "RNN",
   "optimizer": "SGD",
   "emb_size": 400,
@@ -8,5 +8,6 @@
   "patience": 3,
   "batch_size": 64,
   "clip": 0.1,
-  "n_epochs": 20
+  "n_epochs": 20,
+  "weight_tying": true
 }

@@ -90,6 +90,7 @@ def main():
     batch_size = config['batch_size']
     clip = config['clip']
     n_epochs = config['n_epochs']
+    weight_tying = config.get('weight_tying', False)
 
     criterion_eval = nn.CrossEntropyLoss(ignore_index=pad_idx, reduction='sum')
 
@@ -104,7 +105,7 @@ def main():
         print(f"[Load] Loading model parameters from: {args.model_path}")
         
         # Instantiate RNN architecture and load saved parameters
-        model = LM_RNN(emb_size, hid_size, vocab_len, pad_index=pad_idx).to(device)
+        model = LM_RNN(emb_size, hid_size, vocab_len, pad_index=pad_idx, weight_tying=weight_tying).to(device)
         model.load_state_dict(torch.load(args.model_path, map_location=device))
         
         # Calculate perplexity metrics across validation and test sets
@@ -135,13 +136,13 @@ def main():
             #     # ??? was the best so we moved from ??? to ???
             #     "values": tuning_grid.get("hidden_size", [100, 200, 300, 400])
             # },
-            {
-                "name": "lr",
-                # 0.001 was the best so we kept the same value
-                # "values": tuning_grid.get("lr", [0.01, 0.05, 0.1, 0.5, 1, 5])
-                "values": tuning_grid.get("lr", [5, 10, 50])
+            # {
+            #     "name": "lr",
+            #     # 5 was the best so we changed from 0.01 to 5
+            #     # "values": tuning_grid.get("lr", [0.01, 0.05, 0.1, 0.5, 1, 5])
+            #     "values": tuning_grid.get("lr", [5, 10, 50])
 
-            },
+            # },
             # {
             #     "name": "emb_size",
             #     # ??? was the best so we moved from ??? to ???
@@ -191,7 +192,8 @@ def main():
             patience_trial = trial_cfg.get('patience', patience)
 
             # Model selection
-            model_local = LM_RNN(emb_sz, hid_sz, vocab_len, pad_index=pad_idx).to(device_local)
+            model_local = LM_RNN(emb_sz, hid_sz, vocab_len, pad_index=pad_idx,
+                                 weight_tying=trial_cfg.get('weight_tying', weight_tying)).to(device_local)
             model_local.apply(init_weights)
 
             # Optimizer selection
@@ -224,13 +226,14 @@ def main():
                         break
 
             # Restore best model and evaluate on test
-            best_model_local = LM_RNN(emb_sz, hid_sz, vocab_len, pad_index=pad_idx).to(device_local)
+            best_model_local = LM_RNN(emb_sz, hid_sz, vocab_len, pad_index=pad_idx,
+                                      weight_tying=trial_cfg.get('weight_tying', weight_tying)).to(device_local)
             best_model_local.load_state_dict(best_state_local)
 
             final_ppl_local, _ = eval_loop(test_loader_local, criterion_eval_local, best_model_local)
 
             # Save experiment artifacts for this trial
-            hyperparams = {k: trial_cfg.get(k, base) for k, base in [("emb_size", emb_size), ("hidden_size", hid_size), ("lr", lr), ("batch_size", batch_size), ("optimizer", optimizer_name), ("model_type", model_type), ("patience", patience), ("clip", clip), ("n_epochs", n_epochs)]}
+            hyperparams = {k: trial_cfg.get(k, base) for k, base in [("emb_size", emb_size), ("hidden_size", hid_size), ("lr", lr), ("batch_size", batch_size), ("optimizer", optimizer_name), ("model_type", model_type), ("patience", patience), ("clip", clip), ("n_epochs", n_epochs), ("weight_tying", weight_tying)]}
             save_experiment(best_model_local, hyperparams, losses_train_local, losses_dev_local, name=trial_cfg['experiment_name'])
 
             extras = {"best_val_ppl": best_ppl_local, "final_test_ppl": final_ppl_local}
@@ -269,7 +272,7 @@ def main():
     )
 
     # Build model architecture and apply custom weight initializations
-    model = LM_RNN(emb_size, hid_size, vocab_len, pad_index=pad_idx).to(device)
+    model = LM_RNN(emb_size, hid_size, vocab_len, pad_index=pad_idx, weight_tying=weight_tying).to(device)
     model.apply(init_weights)
 
     optimizer = optim.SGD(model.parameters(), lr=lr)
@@ -307,7 +310,7 @@ def main():
                 break
 
     # Restore the best performing parameters from the training run
-    best_model = LM_RNN(emb_size, hid_size, vocab_len, pad_index=pad_idx).to(device)
+    best_model = LM_RNN(emb_size, hid_size, vocab_len, pad_index=pad_idx, weight_tying=weight_tying).to(device)
     best_model.load_state_dict(best_model_state)
 
     # Final evaluate run across testing dataset
@@ -326,6 +329,7 @@ def main():
         "batch_size": batch_size,
         "clip": clip,
         "n_epochs": n_epochs,
+        "weight_tying": weight_tying,
         "vocabulary_size": vocab_len,
         "best_val_ppl": best_ppl,
         "final_test_ppl": final_ppl
