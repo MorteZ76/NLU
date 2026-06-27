@@ -10,7 +10,7 @@ FINAL BEST CONFIGURATION
   model_type: RNN
   optimizer: SGD
   emb_size: 200
-  hidden_size: 400
+  hidden_size: 200
   lr: 5
   patience: 3
   batch_size: 64

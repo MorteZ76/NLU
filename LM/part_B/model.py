@@ -1,6 +1,23 @@
 import torch
 import torch.nn as nn
 
+
+class VariationalDropout(nn.Module):
+    """
+    Applies a consistent dropout mask across the time (sequence) dimension.
+    This preserves sequential coherence compared to standard independent element-wise dropout.
+    """
+    def __init__(self, p=0.5):
+        super(VariationalDropout, self).__init__()
+        self.p = p
+
+    def forward(self, x):
+        if not self.training or not self.p:
+            return x
+        mask = x.new_empty(x.size(0), 1, x.size(2), requires_grad=False).bernoulli_(1 - self.p)
+        return x * mask / (1 - self.p)
+
+
 class LM_RNN(nn.Module):
     """
     Standard Elman Recurrent Neural Network (RNN) Language Model.
@@ -33,6 +50,10 @@ class LM_RNN(nn.Module):
         
         # Continuous representation space for discrete tokens
         self.embedding = nn.Embedding(output_size, emb_size, padding_idx=pad_index)
+
+        # Variational dropout layers for embeddings and outputs
+        self.emb_dropout = VariationalDropout(emb_dropout)
+        self.out_dropout = VariationalDropout(out_dropout)
         
         # Standard uni-directional Elman RNN layer
         self.rnn = nn.RNN(emb_size, hidden_size, n_layers, bidirectional=False, batch_first=True)
@@ -59,10 +80,12 @@ class LM_RNN(nn.Module):
         # Step 1: Map input IDs to dense continuous vectors
         # Shape transition: [B, T] -> [B, T, Emb]
         emb = self.embedding(input_sequence)
+        emb = self.emb_dropout(emb)
         
         # Step 2: Pass embeddings through the Elman recurrent structure
         # Shape transition: [B, T, Emb] -> [B, T, Hid]
         rnn_out, _ = self.rnn(emb)
+        rnn_out = self.out_dropout(rnn_out)
         
         # Step 3: Project back to vocabulary dimensions and permute dimensions
         # Shape transitions: [B, T, Hid] -> [B, T, Vocab] -> [B, Vocab, T]
