@@ -149,11 +149,11 @@ def main():
             #     "values": tuning_grid.get("emb_size", [100, 200, 300, 400])
             # },
 
-            {
-                "name": "clip",
-                # ?? was the best so we moved from 5 to ??
-                "values": tuning_grid.get("clip", [0.1, 0.5, 1, 3, 5, 10, 50])
-            },
+            # {
+            #     "name": "clip",
+            #     # 0.1 was the best so we moved from 5 to 0.1
+            #     "values": tuning_grid.get("clip", [0.1, 0.5, 1, 3, 5, 10, 50])
+            # },
         ]
 
         # Run function for a single trial
