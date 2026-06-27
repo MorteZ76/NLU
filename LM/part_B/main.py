@@ -138,7 +138,9 @@ def main():
             {
                 "name": "lr",
                 # 0.001 was the best so we kept the same value
-                "values": tuning_grid.get("lr", [0.01, 0.05, 0.1, 0.5, 1, 5])
+                # "values": tuning_grid.get("lr", [0.01, 0.05, 0.1, 0.5, 1, 5])
+                "values": tuning_grid.get("lr", [5, 10, 50])
+
             },
             # {
             #     "name": "emb_size",
