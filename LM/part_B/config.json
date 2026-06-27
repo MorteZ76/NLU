@@ -1,7 +1,8 @@
 {
-  "experiment_name": "RNN_SGD_VarDrop_WeightTied",
+  "experiment_name": "RNN_NT-ASGD_VarDrop_WeightTied",
   "model_type": "RNN",
-  "optimizer": "SGD",
+  "optimizer": "NT-ASGD",
+  "non_mono": 3,
   "emb_size": 200,
   "hidden_size": 200,
   "lr": 10,

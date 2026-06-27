@@ -488,3 +488,33 @@ def _generate_sequential_summary(parent_dir: str,
             f.write(f"  Total Trials: {len(result['results'])}\n")
     
     print(f"[Sequential] Summary saved to: {summary_path}")
+    
+def check_nt_asgd_trigger(val_losses, non_mono=3):
+    """
+    Checks the non-monotonic trigger condition for switching to ASGD.
+    Triggered when validation loss fails to improve for 'non_mono' epochs.
+    Specifically: if current epoch > non_mono and current loss > min(val_losses[:-non_mono])
+    """
+    if len(val_losses) > non_mono:
+        if val_losses[-1] > min(val_losses[:-non_mono]):
+            return True
+    return False
+
+def swap_asgd_weights(model, optimizer):
+    """
+    Temporarily substitutes model weights with ASGD's averaged weights ('ax').
+    Returns a dictionary containing the original weights for restoration.
+    """
+    backup = {}
+    for prm in model.parameters():
+        if prm in optimizer.state and 'ax' in optimizer.state[prm]:
+            backup[prm] = prm.data.clone()
+            prm.data = optimizer.state[prm]['ax'].clone()
+    return backup
+
+def restore_asgd_weights(model, backup):
+    """
+    Restores model weights from a previously saved backup dictionary.
+    """
+    for prm, backup_weight in backup.items():
+        prm.data = backup_weight.clone()

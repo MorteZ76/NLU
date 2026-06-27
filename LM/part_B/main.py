@@ -14,7 +14,7 @@ from torch.utils.data import DataLoader
 # Import modular project blocks
 from utils import download_ptb, read_file, Lang, PennTreeBank, collate_fn
 from model import LM_RNN
-from functions import set_seed, init_weights, train_loop, eval_loop, save_experiment, sequential_grid_search
+from functions import set_seed, init_weights, train_loop, eval_loop, save_experiment, sequential_grid_search, check_nt_asgd_trigger, swap_asgd_weights, restore_asgd_weights
 
 def main():
     # 0. Load configuration
@@ -93,6 +93,7 @@ def main():
     weight_tying = config.get('weight_tying', False)
     emb_drop = config.get('emb_drop', 0.1)
     out_drop = config.get('out_drop', 0.1)
+    non_mono = config.get('non_mono', 5)
 
     def resolve_model_sizes(emb_value, hidden_value):
         if weight_tying and emb_value != hidden_value:
@@ -158,7 +159,7 @@ def main():
             # },
             # {
             #     "name": "lr",
-            #     # 5 was the best so we changed from 0.01 to 5
+            #     # 10 was the best so we changed from 5 to 10
             #     # "values": tuning_grid.get("lr", [0.01, 0.05, 0.1, 0.5, 1, 5])
             #     "values": tuning_grid.get("lr", [5, 10, 50])
             # },
@@ -174,12 +175,12 @@ def main():
             # },
             # {
             #     "name": "emb_drop",
-            #     # ??? was the best so we moved from 0.45 to 0.1
+            #     # 0.1 was the best so we moved from 0.45 to 0.1
             #     "values": tuning_grid.get("emb_drop", [0.1, 0.3, 0.5])
             # },
             # {
             #     "name": "out_drop",
-            #     # ??? was the best so we moved from 0.45 to 0.1
+            #     # 0.1 was the best so we moved from 0.45 to 0.1
             #     "values": tuning_grid.get("out_drop", [0.1, 0.3, 0.5])
             # },
         ]
@@ -237,7 +238,14 @@ def main():
             model_local.apply(init_weights)
 
             # Optimizer selection
-            optimizer_local = optim.SGD(model_local.parameters(), lr=lr_trial)
+            optimizer_name_trial = trial_cfg.get('optimizer', optimizer_name)
+            if optimizer_name_trial in ["SGD", "NT-ASGD"]:
+                optimizer_local = optim.SGD(model_local.parameters(), lr=lr_trial)
+            else:
+                optimizer_local = optim.SGD(model_local.parameters(), lr=lr_trial) # Fallback
+
+            is_asgd_local = False
+            non_mono_trial = trial_cfg.get('non_mono', non_mono)
 
             criterion_train_local = nn.CrossEntropyLoss(ignore_index=pad_idx)
             criterion_eval_local = nn.CrossEntropyLoss(ignore_index=pad_idx, reduction='sum')
@@ -253,12 +261,31 @@ def main():
                 train_loss_local = train_loop(train_loader_local, optimizer_local, criterion_train_local, model_local, clip_trial)
                 losses_train_local.append(train_loss_local)
                 
-                ppl_dev_local, loss_dev_local = eval_loop(dev_loader_local, criterion_eval_local, model_local)
+                # Validation evaluation with ASGD weight swapping if active
+                if optimizer_name_trial == "NT-ASGD" and is_asgd_local:
+                    backup_w = swap_asgd_weights(model_local, optimizer_local)
+                    ppl_dev_local, loss_dev_local = eval_loop(dev_loader_local, criterion_eval_local, model_local)
+                    restore_asgd_weights(model_local, backup_w)
+                else:
+                    ppl_dev_local, loss_dev_local = eval_loop(dev_loader_local, criterion_eval_local, model_local)
+                    
                 losses_dev_local.append(loss_dev_local)
+                
+                # NT-ASGD Trigger Check
+                if optimizer_name_trial == "NT-ASGD" and not is_asgd_local:
+                    if check_nt_asgd_trigger(losses_dev_local, non_mono_trial):
+                        optimizer_local = optim.ASGD(model_local.parameters(), lr=lr_trial, t0=0, lambd=0.)
+                        is_asgd_local = True
                 
                 if ppl_dev_local < best_ppl_local:
                     best_ppl_local = ppl_dev_local
-                    best_state_local = {k: v.cpu() for k, v in model_local.state_dict().items()}
+                    # Save ASGD weights if active, otherwise standard weights
+                    if is_asgd_local:
+                        backup_w = swap_asgd_weights(model_local, optimizer_local)
+                        best_state_local = {k: v.cpu() for k, v in model_local.state_dict().items()}
+                        restore_asgd_weights(model_local, backup_w)
+                    else:
+                        best_state_local = {k: v.cpu() for k, v in model_local.state_dict().items()}
                     current_pat = patience_trial
                 else:
                     current_pat -= 1
@@ -278,7 +305,7 @@ def main():
                 ("batch_size", batch_size), ("optimizer", optimizer_name), 
                 ("model_type", model_type), ("patience", patience), ("clip", clip), 
                 ("n_epochs", n_epochs), ("weight_tying", weight_tying), 
-                ("emb_drop", emb_drop), ("out_drop", out_drop)
+                ("emb_drop", emb_drop), ("out_drop", out_drop), ("non_mono", non_mono)
             ]}
             save_experiment(best_model_local, hyperparams, losses_train_local, losses_dev_local, name=trial_cfg['experiment_name'])
 
@@ -332,7 +359,13 @@ def main():
         
     model.apply(init_weights)
 
-    optimizer = optim.SGD(model.parameters(), lr=lr)
+    if optimizer_name in ["SGD", "NT-ASGD"]:
+        optimizer = optim.SGD(model.parameters(), lr=lr)
+    else:
+        optimizer = optim.SGD(model.parameters(), lr=lr)
+
+    is_asgd = False
+
     criterion_train = nn.CrossEntropyLoss(ignore_index=pad_idx)
 
     # Training Loop Tracking Variables
@@ -349,16 +382,35 @@ def main():
         train_loss = train_loop(train_loader, optimizer, criterion_train, model, clip)
         losses_train.append(train_loss)
         
-        # Run validation epoch
-        ppl_dev, loss_dev = eval_loop(dev_loader, criterion_eval, model)
+        # Run validation epoch with ASGD weights if active
+        if optimizer_name == "NT-ASGD" and is_asgd:
+            backup_w = swap_asgd_weights(model, optimizer)
+            ppl_dev, loss_dev = eval_loop(dev_loader, criterion_eval, model)
+            restore_asgd_weights(model, backup_w)
+        else:
+            ppl_dev, loss_dev = eval_loop(dev_loader, criterion_eval, model)
+            
         losses_dev.append(loss_dev)
         
-        pbar.set_description(f"Epoch {epoch} | Val PPL: {ppl_dev:.2f}")
+        pbar.set_description(f"Epoch {epoch} | Val PPL: {ppl_dev:.2f}{' (ASGD)' if is_asgd else ''}")
+        
+        # NT-ASGD Trigger Check
+        if optimizer_name == "NT-ASGD" and not is_asgd:
+            if check_nt_asgd_trigger(losses_dev, non_mono):
+                print(f"\n[NT-ASGD] Triggered at Epoch {epoch} due to non-monotonic metric behavior.")
+                # 't0=0' starts averaging immediately; 'lambd=0.' disables ASGD's internal decay factor
+                optimizer = optim.ASGD(model.parameters(), lr=lr, t0=0, lambd=0.)
+                is_asgd = True
 
         # Update best model weights or decrement early stopping patience
         if ppl_dev < best_ppl:
             best_ppl = ppl_dev
-            best_model_state = {k: v.cpu() for k, v in model.state_dict().items()}
+            if is_asgd:
+                backup_w = swap_asgd_weights(model, optimizer)
+                best_model_state = {k: v.cpu() for k, v in model.state_dict().items()}
+                restore_asgd_weights(model, backup_w)
+            else:
+                best_model_state = {k: v.cpu() for k, v in model.state_dict().items()}
             current_patience = patience  # Reset validation tracking steps
         else:
             current_patience -= 1
@@ -395,6 +447,7 @@ def main():
         "weight_tying": weight_tying,
         "emb_drop": emb_drop,
         "out_drop": out_drop,
+        "non_mono": non_mono,
         "vocabulary_size": vocab_len,
         "best_val_ppl": best_ppl,
         "final_test_ppl": final_ppl
