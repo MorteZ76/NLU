@@ -1,0 +1,16 @@
+{
+    "experiment_name": "RNN_SGD_NoDrop_WeightTied",
+    "model_type": "RNN",
+    "optimizer": "SGD",
+    "emb_size": 400,
+    "hidden_size": 400,
+    "lr": 5,
+    "patience": 3,
+    "batch_size": 64,
+    "clip": 0.1,
+    "n_epochs": 20,
+    "weight_tying": true,
+    "vocabulary_size": 10001,
+    "best_val_ppl": 155.421666647295,
+    "final_test_ppl": 150.83503046178254
+}
