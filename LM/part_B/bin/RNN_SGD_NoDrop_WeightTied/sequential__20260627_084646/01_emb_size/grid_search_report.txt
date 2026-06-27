@@ -1,0 +1,37 @@
+================================================================================
+GRID SEARCH REPORT: EMB_SIZE
+================================================================================
+
+Generated: 2026-06-27 09:16:26
+Parameter: emb_size
+
+SUMMARY STATISTICS
+--------------------------------------------------------------------------------
+Total Trials:       4
+Successful Trials:  4
+Failed Trials:      0
+
+Best Metric:        145.354276
+Worst Metric:       152.331079
+Mean Metric:        148.825032
+Std Dev Metric:     2.853149
+Median Metric:      148.807386
+
+DETAILED RESULTS
+--------------------------------------------------------------------------------
+
+#1 | emb_size=200 | Metric: 145.354276 | Status: ✓ PASS
+     best_val_ppl: 149.24220760858051
+     final_test_ppl: 145.35427619076174
+
+#2 | emb_size=300 | Metric: 146.779739 | Status: ✓ PASS
+     best_val_ppl: 149.95053832533577
+     final_test_ppl: 146.7797385876524
+
+#3 | emb_size=400 | Metric: 150.835033 | Status: ✓ PASS
+     best_val_ppl: 155.42167904577664
+     final_test_ppl: 150.8350328022825
+
+#4 | emb_size=100 | Metric: 152.331079 | Status: ✓ PASS
+     best_val_ppl: 159.23951330400803
+     final_test_ppl: 152.33107929400154
