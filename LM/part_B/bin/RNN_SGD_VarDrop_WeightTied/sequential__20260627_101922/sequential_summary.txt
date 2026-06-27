@@ -1,0 +1,35 @@
+================================================================================
+SEQUENTIAL GRID SEARCH SUMMARY
+================================================================================
+
+Generated: 2026-06-27 11:01:25
+
+FINAL BEST CONFIGURATION
+--------------------------------------------------------------------------------
+  experiment_name: RNN_SGD_VarDrop_WeightTied
+  model_type: RNN
+  optimizer: SGD
+  emb_size: 200
+  hidden_size: 200
+  lr: 10
+  patience: 3
+  batch_size: 64
+  clip: 0.1
+  n_epochs: 20
+  weight_tying: True
+  emb_drop: 0.1
+  out_drop: 0.1
+
+
+SEARCH PROGRESSION
+--------------------------------------------------------------------------------
+
+Step 1: emb_drop
+  Best Value: 0.1
+  Best Metric: 142.713985
+  Total Trials: 3
+
+Step 2: out_drop
+  Best Value: 0.1
+  Best Metric: 136.009360
+  Total Trials: 3

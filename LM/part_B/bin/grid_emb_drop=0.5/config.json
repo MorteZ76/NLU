@@ -1,7 +1,7 @@
 {
     "emb_size": 200,
     "hidden_size": 200,
-    "lr": 5,
+    "lr": 10,
     "batch_size": 64,
     "optimizer": "SGD",
     "model_type": "RNN",

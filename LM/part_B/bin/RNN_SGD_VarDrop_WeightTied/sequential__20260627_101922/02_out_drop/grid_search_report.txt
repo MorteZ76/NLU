@@ -1,0 +1,33 @@
+================================================================================
+GRID SEARCH REPORT: OUT_DROP
+================================================================================
+
+Generated: 2026-06-27 11:01:25
+Parameter: out_drop
+
+SUMMARY STATISTICS
+--------------------------------------------------------------------------------
+Total Trials:       3
+Successful Trials:  3
+Failed Trials:      0
+
+Best Metric:        136.009360
+Worst Metric:       144.634349
+Mean Metric:        140.271535
+Std Dev Metric:     3.521856
+Median Metric:      140.170896
+
+DETAILED RESULTS
+--------------------------------------------------------------------------------
+
+#1 | out_drop=0.1 | Metric: 136.009360 | Status: ✓ PASS
+     best_val_ppl: 140.88667347452494
+     final_test_ppl: 136.0093595457499
+
+#2 | out_drop=0.3 | Metric: 140.170896 | Status: ✓ PASS
+     best_val_ppl: 144.9798755396659
+     final_test_ppl: 140.17089556780837
+
+#3 | out_drop=0.5 | Metric: 144.634349 | Status: ✓ PASS
+     best_val_ppl: 149.2209479240647
+     final_test_ppl: 144.63434901904958
