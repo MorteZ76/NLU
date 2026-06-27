@@ -127,28 +127,28 @@ def main():
         param_tuning_order = [
             # {
             #     "name": "batch_size",
-            #     # they were almost the same from 122.4 to 123.3 so i decided to go with what i had before which is 64
+            #     # they were almost the same from ???.4 to ???.3 so i decided to go with what i had before which is ???
             #     "values": tuning_grid.get("batch_size", [16, 32, 64, 128])
             # },
             # {
             #     "name": "hidden_size",
-            #     # 400 was the best so we moved from 150 to 400
+            #     # ??? was the best so we moved from ??? to ???
             #     "values": tuning_grid.get("hidden_size", [100, 200, 300, 400])
             # },
-            # {
-            #     "name": "lr",
-            #     # 0.001 was the best so we kept the same value
-            #     "values": tuning_grid.get("lr", [0.0001, 0.001, 0.005, 0.01])
-            # },
+            {
+                "name": "lr",
+                # 0.001 was the best so we kept the same value
+                "values": tuning_grid.get("lr", [0.01, 0.05, 0.1, 0.5, 1, 5])
+            },
             # {
             #     "name": "emb_size",
-            #     # 400 was the best so we moved from 300 to 400
+            #     # ??? was the best so we moved from ??? to ???
             #     "values": tuning_grid.get("emb_size", [100, 200, 300, 400])
             # },
 
             # {
             #     "name": "clip",
-            #     # 0.1 was the best so we moved from 5 to 0.1
+            #     # ??? was the best so we moved from ??? to ???
             #     "values": tuning_grid.get("clip", [0.1, 0.5, 1, 3, 5, 10, 50])
             # },
         ]
