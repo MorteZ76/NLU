@@ -1,0 +1,31 @@
+============================================================
+EXPERIMENT RESULTS — ATIS_Joint_Model_Baseline
+Saved: 2026-06-28 14:21:49
+============================================================
+
+HYPERPARAMETERS
+------------------------------------------------------------
+  model_type          : ModelIAS
+  optimizer           : Adam
+  emb_size            : 300
+  hidden_size         : 200
+  lr                  : 0.0001
+  clip                : 5
+  n_epochs            : 200
+  patience            : 3
+  batch_size          : 64
+
+FINAL SCORES
+------------------------------------------------------------
+  Best Dev Slot F1          : 0.9603
+  Test Slot F1              : 0.9233
+  Test Intent Accuracy      : 0.9384
+  Dev Intent Accuracy       : 0.9779
+  Stopped at Epoch          : 160
+
+FILES
+------------------------------------------------------------
+  Checkpoint : bin/ATIS_Joint_Model_Baseline/ATIS_Joint_Model_Baseline.pt
+  Config     : bin/ATIS_Joint_Model_Baseline/config.json
+  Loss plot  : bin/ATIS_Joint_Model_Baseline/loss_plot.png
+  This file  : bin/ATIS_Joint_Model_Baseline/results_summary.txt

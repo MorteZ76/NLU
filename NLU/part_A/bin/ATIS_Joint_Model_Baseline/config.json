@@ -9,7 +9,7 @@
     "batch_size": 64,
     "clip": 5,
     "n_epochs": 200,
-    "best_dev_f1": 0.9620476610767874,
-    "final_test_f1": 0.918153200419727,
-    "final_intent_acc": 0.9339305711086227
+    "best_dev_f1": 0.9603291213635028,
+    "final_test_f1": 0.9232651634329664,
+    "final_intent_acc": 0.9384098544232923
 }
