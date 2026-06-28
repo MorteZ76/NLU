@@ -88,8 +88,7 @@ def main():
         
         model_kwargs = {
             "hid_size": hid_size, "out_slot": out_slot, "out_int": out_int,
-            "emb_size": emb_size, "vocab_len": vocab_len, "pad_index": pad_idx,
-            "dropout": dropout_val, "bidirectional": bidirectional
+            "emb_size": emb_size, "vocab_len": vocab_len, "pad_index": pad_idx
         }
         
         model = ModelIAS(**model_kwargs).to(device)
@@ -152,9 +151,7 @@ def main():
                 "hid_size": trial_cfg.get('hidden_size', hid_size),
                 "out_slot": out_slot, "out_int": out_int,
                 "emb_size": trial_cfg.get('emb_size', emb_size),
-                "vocab_len": vocab_len, "pad_index": pad_idx,
-                "dropout": trial_cfg.get('dropout', dropout_val),
-                "bidirectional": trial_cfg.get('bidirectional', bidirectional)
+                "vocab_len": vocab_len, "pad_index": pad_idx
             }
 
             model_local = ModelIAS(**model_kwargs).to(device)
@@ -212,8 +209,7 @@ def main():
     
     model_kwargs = {
         "hid_size": hid_size, "out_slot": out_slot, "out_int": out_int,
-        "emb_size": emb_size, "vocab_len": vocab_len, "pad_index": pad_idx,
-        "dropout": dropout_val, "bidirectional": bidirectional
+        "emb_size": emb_size, "vocab_len": vocab_len, "pad_index": pad_idx
     }
     
     model = ModelIAS(**model_kwargs).to(device)
