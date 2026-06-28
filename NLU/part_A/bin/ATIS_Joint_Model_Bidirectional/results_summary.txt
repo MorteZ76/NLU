@@ -1,0 +1,31 @@
+============================================================
+EXPERIMENT RESULTS — ATIS_Joint_Model_Bidirectional
+Saved: 2026-06-28 14:31:05
+============================================================
+
+HYPERPARAMETERS
+------------------------------------------------------------
+  model_type          : ModelIAS
+  optimizer           : Adam
+  emb_size            : 300
+  hidden_size         : 200
+  lr                  : 0.0001
+  clip                : 5
+  n_epochs            : 200
+  patience            : 3
+  batch_size          : 64
+
+FINAL SCORES
+------------------------------------------------------------
+  Best Dev Slot F1          : 0.9725
+  Test Slot F1              : 0.9331
+  Test Intent Accuracy      : 0.9351
+  Dev Intent Accuracy       : 0.9759
+  Stopped at Epoch          : 95
+
+FILES
+------------------------------------------------------------
+  Checkpoint : bin/ATIS_Joint_Model_Bidirectional/ATIS_Joint_Model_Bidirectional.pt
+  Config     : bin/ATIS_Joint_Model_Bidirectional/config.json
+  Loss plot  : bin/ATIS_Joint_Model_Bidirectional/loss_plot.png
+  This file  : bin/ATIS_Joint_Model_Bidirectional/results_summary.txt

@@ -1,0 +1,15 @@
+{
+    "experiment_name": "ATIS_Joint_Model_Bidirectional",
+    "model_type": "ModelIAS",
+    "optimizer": "Adam",
+    "emb_size": 300,
+    "hidden_size": 200,
+    "lr": 0.0001,
+    "patience": 3,
+    "batch_size": 64,
+    "clip": 5,
+    "n_epochs": 200,
+    "best_dev_f1": 0.9724933451641525,
+    "final_test_f1": 0.93305069775658,
+    "final_intent_acc": 0.93505039193729
+}
