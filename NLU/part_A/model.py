@@ -22,6 +22,9 @@ class ModelIAS(nn.Module):
     def forward(self, utterance, seq_lengths):
         # utterance.size() = batch_size X seq_len
         utt_emb = self.embedding(utterance.long()) # utt_emb.size() = batch_size X seq_len X emb_size
+
+        # Apply the first dropout layer immediately after the embedding layer
+        utt_emb = self.dropout(utt_emb)
         
         # pack_padded_sequence avoid computation over pad tokens reducing the computational cost
         packed_input = pack_padded_sequence(utt_emb, seq_lengths.cpu().numpy(), batch_first=True)
@@ -34,6 +37,10 @@ class ModelIAS(nn.Module):
         
         # Get the last hidden state, which is the concatenation of the last hidden states from both directions
         last_hidden = torch.cat((last_hidden[-2, :, :], last_hidden[-1, :, :]), dim=-1)
+
+        # Apply the second dropout immediately before the final linear projection layers
+        utt_encoded = self.dropout(utt_encoded)
+        last_hidden = self.dropout(last_hidden)
         
         # Compute slot logits
         slots = self.slot_out(utt_encoded)
