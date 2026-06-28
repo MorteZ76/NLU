@@ -1,0 +1,15 @@
+{
+    "experiment_name": "ATIS_Joint_Model_Baseline",
+    "model_type": "ModelIAS",
+    "optimizer": "Adam",
+    "emb_size": 300,
+    "hidden_size": 200,
+    "lr": 0.0001,
+    "patience": 3,
+    "batch_size": 64,
+    "clip": 5,
+    "n_epochs": 200,
+    "best_dev_f1": 0,
+    "final_test_f1": 0,
+    "final_intent_acc": 0.0022396416573348264
+}
