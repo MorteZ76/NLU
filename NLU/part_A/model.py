@@ -3,7 +3,7 @@ import torch.nn as nn
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
 class ModelIAS(nn.Module):
-    def __init__(self, hid_size, out_slot, out_int, emb_size, vocab_len, n_layer=1, pad_index=0):
+    def __init__(self, hid_size, out_slot, out_int, emb_size, vocab_len, n_layer=1, pad_index=0, dropout_rate=0.1):
         super(ModelIAS, self).__init__()
         # hid_size = Hidden size
         # out_slot = number of slots (output size for slot filling)
@@ -16,8 +16,8 @@ class ModelIAS(nn.Module):
         self.slot_out = nn.Linear(hid_size * 2, out_slot)  # * 2 for bidirectional
         self.intent_out = nn.Linear(hid_size * 2, out_int)  # * 2 for bidirectional
         
-        # Dropout layer (to be positioned in Part 2.A)
-        self.dropout = nn.Dropout(0.1)
+        
+        self.dropout = nn.Dropout(dropout_rate)
         
     def forward(self, utterance, seq_lengths):
         # utterance.size() = batch_size X seq_len

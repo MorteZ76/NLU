@@ -171,7 +171,7 @@ def save_experiment(model, hyperparameters, train_losses, dev_metrics, name="bas
 
         f.write("HYPERPARAMETERS\n" + "-" * 60 + "\n")
         _DISPLAY_KEYS = ["model_type", "optimizer", "emb_size", "hidden_size",
-                         "lr", "clip", "n_epochs", "patience", "batch_size"]
+                         "lr", "dropout_rate", "clip", "n_epochs", "patience", "batch_size"]
         for key in _DISPLAY_KEYS:
             if key in hyperparameters:
                 f.write(f"  {key:<20}: {hyperparameters[key]}\n")
@@ -280,8 +280,13 @@ def grid_search(param_name: str,
 def sequential_grid_search(param_tuning_order: List[Dict[str, Any]],
                            base_config: Dict[str, Any],
                            run_fn: Callable[[Dict[str, Any]], Tuple[float, Dict[str, Any]]],
-                           base_results_dir: str = "bin/grid_search",
-                           final_model_scores: Dict[str, Any] = None) -> Dict[str, Any]:
+                           base_results_dir: str = "bin/grid_search") -> Dict[str, Any]:
+    """
+    Runs each parameter search step in sequence, fixing the best value before moving on.
+    Returns the best config found, all per-step results, and the results directory path.
+    Call append_final_scores_to_summary() afterwards to add definitive test scores without
+    re-running any trials.
+    """
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     parent_results_dir = os.path.join(base_results_dir, f"sequential__{timestamp}")
     os.makedirs(parent_results_dir, exist_ok=True)
@@ -312,11 +317,44 @@ def sequential_grid_search(param_tuning_order: List[Dict[str, Any]],
             print(f"[Sequential] Fixed {param_name}={search_result['best_config'][param_name]} " 
                   f"(F1: {search_result['best_metric']:.4f})")
     
-    _generate_sequential_summary(parent_results_dir, all_search_results, current_best_config,
-                                 final_model_scores=final_model_scores)
-    return {"best_config": current_best_config, "all_results": all_search_results, "results_dir": parent_results_dir}
+    _generate_sequential_summary(parent_results_dir, all_search_results, current_best_config)
+    return {
+        "best_config": current_best_config,
+        "all_results": all_search_results,
+        "results_dir": parent_results_dir,
+    }
 
-def _generate_sequential_summary(parent_dir, all_results, final_config, final_model_scores: Dict[str, Any] = None):
+
+def append_final_scores_to_summary(results_dir: str, final_model_scores: Dict[str, Any]) -> None:
+    """
+    Appends a BEST MODEL — FINAL EVALUATION block to an existing sequential_summary.txt.
+    Call this after sequential_grid_search() completes and you have evaluated the best config
+    on the test set — no trials are re-run.
+    """
+    summary_path = os.path.join(results_dir, "sequential_summary.txt")
+    if not os.path.exists(summary_path):
+        print(f"[Grid] Warning: summary not found at {summary_path}, skipping append.")
+        return
+
+    score_labels = {
+        "best_dev_f1":     "Best Dev Slot F1",
+        "test_slot_f1":    "Test Slot F1",
+        "test_intent_acc": "Test Intent Accuracy",
+        "dev_intent_acc":  "Dev Intent Accuracy",
+    }
+
+    with open(summary_path, "a", encoding="utf-8") as f:
+        f.write("\n\n" + "=" * 80 + "\n")
+        f.write("BEST MODEL — FINAL EVALUATION\n")
+        f.write(f"Evaluated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        f.write("-" * 80 + "\n")
+        for key, label in score_labels.items():
+            if key in final_model_scores:
+                f.write(f"  {label:<26}: {final_model_scores[key]:.4f}\n")
+
+    print(f"[Grid] Final scores appended to: {summary_path}")
+
+def _generate_sequential_summary(parent_dir, all_results, final_config):
     summary_path = os.path.join(parent_dir, "sequential_summary.txt")
     with open(summary_path, "w", encoding="utf-8") as f:
         f.write("=" * 80 + "\nSEQUENTIAL GRID SEARCH SUMMARY\n")
@@ -330,7 +368,7 @@ def _generate_sequential_summary(parent_dir, all_results, final_config, final_mo
         f.write("\n\nSEARCH PROGRESSION\n" + "-" * 80 + "\n")
         for step, (param_name, result) in enumerate(all_results.items(), 1):
             f.write(f"\nStep {step}: {param_name}\n")
-            f.write(f"  Best Value : {result['best_config'].get(param_name, 'N/A')}\n")
+            f.write(f"  Best Value  : {result['best_config'].get(param_name, 'N/A')}\n")
             f.write(f"  Best Slot F1: {result['best_metric']:.6f}\n")
             best_extras = result.get("best_extras", {})
             if isinstance(best_extras, dict) and "intent_acc" in best_extras:
@@ -348,19 +386,5 @@ def _generate_sequential_summary(parent_dir, all_results, final_config, final_mo
                               if isinstance(r.get("extras"), dict) and "intent_acc" in r["extras"] \
                               else "     N/A"
                     f.write(f"  {r['trial']:<7} {val_str:<15} {f1_str:>10} {acc_str:>12}  {r['status']}\n")
-
-        if final_model_scores:
-            f.write("\n\n" + "=" * 80 + "\n")
-            f.write("BEST MODEL — FINAL EVALUATION\n")
-            f.write("-" * 80 + "\n")
-            score_labels = {
-                "best_dev_f1":     "Best Dev Slot F1",
-                "test_slot_f1":    "Test Slot F1",
-                "test_intent_acc": "Test Intent Accuracy",
-                "dev_intent_acc":  "Dev Intent Accuracy",
-            }
-            for key, label in score_labels.items():
-                if key in final_model_scores:
-                    f.write(f"  {label:<26}: {final_model_scores[key]:.4f}\n")
 
     print(f"[Grid] Sequential summary written to: {summary_path}")

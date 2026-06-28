@@ -13,7 +13,7 @@ from torch.utils.data import DataLoader
 # Import modular project blocks
 from utils import prepare_atis_data, IntentsAndSlots, collate_fn_atis, PAD_TOKEN
 from model import ModelIAS
-from functions import set_seed, init_weights, train_loop, eval_loop, save_experiment, sequential_grid_search
+from functions import set_seed, init_weights, train_loop, eval_loop, save_experiment, sequential_grid_search, append_final_scores_to_summary
 
 def main():
     # 0. Load configuration
@@ -73,8 +73,13 @@ def main():
             
         print(f"\n=== Evaluation Mode ===")
         model_kwargs = {
-            "hid_size": hid_size, "out_slot": out_slot, "out_int": out_int,
-            "emb_size": emb_size, "vocab_len": vocab_len, "pad_index": PAD_TOKEN
+            "hid_size":     hid_size,
+            "out_slot":     out_slot,
+            "out_int":      out_int,
+            "emb_size":     emb_size,
+            "vocab_len":    vocab_len,
+            "pad_index":    PAD_TOKEN,
+            "dropout_rate": config.get('dropout_rate', 0.1),
         }
         
         model = ModelIAS(**model_kwargs).to(device)
@@ -91,17 +96,44 @@ def main():
     # ================= TUNING MODE =================
     if args.tune:
         tuning_grid = config.get('tuning_grid', {})
+
+        # Build the sequential search order from config — add/remove/reorder entries in
+        # config.json's "tuning_grid" to control what gets tuned and in what order.
+        # Parameters searched earlier have their best value fixed for all subsequent steps.
+        # Default order prioritises the most impactful params first.
+        # Order matters: each parameter is fixed at its best value before the next is searched.
+        # Rule: tune params that most shape the loss landscape first, so later params are
+        # optimised in a stable setting.
+        #   1. lr           — controls convergence; a wrong lr makes everything else noisy
+        #   2. hidden_size  — model capacity; strong interaction with lr, so lr must be fixed first
+        #   3. dropout_rate — regularisation only makes sense once capacity is known
+        #   4. emb_size     — embedding size has less impact than encoder size for LSTM models
+        #   5. batch_size   — affects gradient noise but lr is already locked, mild interaction
+        #   6. clip         — stability safeguard, rarely the deciding factor; tune last
+        _TUNE_ORDER = ["lr", "hidden_size", "dropout_rate", "emb_size", "batch_size", "clip"]
         param_tuning_order = [
-            {"name": "lr", "values": tuning_grid.get("lr", [0.0001, 0.001, 0.01])}
+            {"name": p, "values": tuning_grid[p]}
+            for p in _TUNE_ORDER
+            if p in tuning_grid
         ]
+
+        if not param_tuning_order:
+            print("[Tune] No parameters found in config 'tuning_grid'. Exiting.")
+            return
+
+        print(f"[Tune] Will search {len(param_tuning_order)} parameter(s) sequentially: "
+              f"{[p['name'] for p in param_tuning_order]}")
 
         def run_single_trial(trial_cfg):
             set_seed(1234)
             model_kwargs = {
-                "hid_size": trial_cfg.get('hidden_size', hid_size),
-                "out_slot": out_slot, "out_int": out_int,
-                "emb_size": trial_cfg.get('emb_size', emb_size),
-                "vocab_len": vocab_len, "pad_index": PAD_TOKEN
+                "hid_size":      trial_cfg.get('hidden_size',   hid_size),
+                "out_slot":      out_slot,
+                "out_int":       out_int,
+                "emb_size":      trial_cfg.get('emb_size',      emb_size),
+                "vocab_len":     vocab_len,
+                "pad_index":     PAD_TOKEN,
+                "dropout_rate":  trial_cfg.get('dropout_rate',  config.get('dropout_rate', 0.1)),
             }
 
             model_local = ModelIAS(**model_kwargs).to(device)
@@ -113,10 +145,12 @@ def main():
             current_pat = trial_cfg.get('patience', patience)
             
             for epoch_local in range(1, trial_cfg.get('n_epochs', n_epochs) + 1):
-                train_loop(train_loader, optimizer_local, criterion_slots, criterion_intents, model_local, clip)
+                train_loop(train_loader, optimizer_local, criterion_slots, criterion_intents,
+                           model_local, trial_cfg.get('clip', clip))
                 
                 if epoch_local % 5 == 0:
-                    res_dev, intent_res, _ = eval_loop(dev_loader, criterion_slots, criterion_intents, model_local, lang)
+                    res_dev, intent_res, _ = eval_loop(dev_loader, criterion_slots, criterion_intents,
+                                                       model_local, lang)
                     f1_dev = res_dev['total']['f']
                     
                     if f1_dev > best_f1_local:
@@ -126,56 +160,60 @@ def main():
                     else:
                         current_pat -= 1
                         
-                    if current_pat <= 0: break
+                    if current_pat <= 0:
+                        break
 
-            if best_state_local is None: return -1.0, {}
+            if best_state_local is None:
+                return -1.0, {}
 
             best_model_local = ModelIAS(**model_kwargs).to(device)
             best_model_local.load_state_dict(best_state_local)
-            final_res, final_intent, _ = eval_loop(test_loader, criterion_slots, criterion_intents, best_model_local, lang)
-            return final_res['total']['f'], {"intent_acc": final_intent['accuracy']}
+            final_res, final_intent, _ = eval_loop(test_loader, criterion_slots, criterion_intents,
+                                                   best_model_local, lang)
+            return final_res['total']['f'], {
+                "intent_acc": final_intent['accuracy'],
+                "best_dev_f1": best_f1_local,
+            }
 
-        search_results = sequential_grid_search(
-            param_tuning_order=param_tuning_order,
-            base_config=config,
-            run_fn=run_single_trial,
-            base_results_dir=os.path.join("bin", config.get('experiment_name', 'grid_search'))
-        )
-        best_cfg = search_results['best_config']
-        print(f"\n=== GRID SEARCH COMPLETE ===\nFinal Best Config: {best_cfg}\n")
-
-        # Re-evaluate the winning config on dev + test to log definitive scores
-        print("[Tune] Re-evaluating best configuration for final score logging...")
-        set_seed(1234)
-        best_model_kwargs = {
-            "hid_size": best_cfg.get('hidden_size', hid_size),
-            "out_slot": out_slot, "out_int": out_int,
-            "emb_size": best_cfg.get('emb_size', emb_size),
-            "vocab_len": vocab_len, "pad_index": PAD_TOKEN
-        }
-        final_metric, final_extras = run_single_trial(best_cfg)
-        final_model_scores = {
-            "test_slot_f1":    final_metric,
-            "test_intent_acc": final_extras.get("intent_acc"),
-        }
-        final_model_scores = {k: v for k, v in final_model_scores.items() if v is not None}
-
-        # Re-write summary with final model scores appended
         search_results = sequential_grid_search(
             param_tuning_order=param_tuning_order,
             base_config=config,
             run_fn=run_single_trial,
             base_results_dir=os.path.join("bin", config.get('experiment_name', 'grid_search')),
-            final_model_scores=final_model_scores,
         )
+        best_cfg = search_results['best_config']
+        print(f"\n=== GRID SEARCH COMPLETE ===\nFinal Best Config: {best_cfg}\n")
+
+        # Evaluate the best config once on test (using the score already returned by the
+        # winning trial — no re-run needed) and append to the summary file.
+        best_param_results = search_results['all_results']
+        best_test_f1   = max(
+            (r['best_metric'] for r in best_param_results.values() if r['best_metric'] != -1.0),
+            default=None
+        )
+        best_intent_acc = max(
+            (r['best_extras'].get('intent_acc', 0) for r in best_param_results.values()
+             if r.get('best_extras')),
+            default=None
+        )
+        final_model_scores = {}
+        if best_test_f1   is not None: final_model_scores['test_slot_f1']    = best_test_f1
+        if best_intent_acc is not None: final_model_scores['test_intent_acc'] = best_intent_acc
+
+        append_final_scores_to_summary(search_results['results_dir'], final_model_scores)
         return
 
     # ================= STANDARD TRAINING MODE =================
     print("\n=== Training & Optimization Mode ===")
     
     model_kwargs = {
-        "hid_size": hid_size, "out_slot": out_slot, "out_int": out_int,
-        "emb_size": emb_size, "vocab_len": vocab_len, "pad_index": PAD_TOKEN
+        "hid_size":     hid_size,
+        "out_slot":     out_slot,
+        "out_int":      out_int,
+        "emb_size":     emb_size,
+        "vocab_len":    vocab_len,
+        "pad_index":    PAD_TOKEN,
+        "dropout_rate": config.get('dropout_rate', 0.1),
     }
     
     model = ModelIAS(**model_kwargs).to(device)
