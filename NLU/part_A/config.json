@@ -4,18 +4,18 @@
   "optimizer": "Adam",
   "emb_size": 300,
   "hidden_size": 200,
-  "lr": 0.0001,
-  "dropout_rate": 0.1,
+  "lr": 0.001,
+  "dropout_rate": 0.3,
   "patience": 3,
-  "batch_size": 64,
+  "batch_size": 128,
   "clip": 5,
   "n_epochs": 200,
   "tuning_grid": {
-    "lr":           [0.0001, 0.001, 0.01],
-    "hidden_size":  [100, 200, 300],
-    "emb_size":     [100, 200, 300],
-    "dropout_rate": [0.0, 0.1, 0.3, 0.5],
-    "batch_size":   [32, 64, 128],
-    "clip":         [1, 5, 10]
+    "lr":           [0.0005, 0.001, 0.005],
+    "hidden_size":  [150, 200, 250],
+    "dropout_rate": [0.25, 0.3, 0.35, 0.4],
+    "emb_size":     [250, 300, 350, 400],
+    // "batch_size":   [32, 64, 128],
+    "clip":         [3, 5, 7]
   }
 }
