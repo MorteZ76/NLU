@@ -12,8 +12,8 @@
     "weight_tying": true,
     "emb_drop": 0.1,
     "out_drop": 0.1,
-    "non_mono": 3,
+    "non_mono": 1,
     "vocabulary_size": 10001,
-    "best_val_ppl": 140.88666956531515,
-    "final_test_ppl": 136.00937009800407
+    "best_val_ppl": 132.97395109480576,
+    "final_test_ppl": 128.72879308677145
 }
