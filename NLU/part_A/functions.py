@@ -244,26 +244,28 @@ def grid_search(param_name: str,
     # Save per-trial breakdown for this parameter
     trial_log_path = os.path.join(results_dir, "trial_results.txt")
     with open(trial_log_path, "w", encoding="utf-8") as f:
-        f.write("=" * 70 + "\n")
+        f.write("=" * 80 + "\n")
         f.write(f"GRID SEARCH — Parameter: {param_name}\n")
         f.write(f"Saved: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-        f.write("=" * 70 + "\n\n")
-        f.write(f"{'Trial':<7} {'Value':<15} {'Slot F1':>10} {'Intent Acc':>12}  Status\n")
-        f.write("-" * 70 + "\n")
+        f.write("=" * 80 + "\n\n")
+        f.write(f"{'Trial':<7} {'Value':<15} {'Slot F1':>10} {'Intent Acc':>12} {'Avg (rank)':>12}  Status\n")
+        f.write("-" * 80 + "\n")
         for r in results:   # keep chronological order in the table
-            val_str = str(r["param_value"])
-            f1_str = f"{r['metric']:.4f}" if r["metric"] != -1.0 else "  N/A"
-            acc_str = f"{r['extras'].get('intent_acc', float('nan')):.4f}" \
-                      if isinstance(r.get("extras"), dict) and "intent_acc" in r["extras"] \
-                      else "     N/A"
-            f.write(f"{r['trial']:<7} {val_str:<15} {f1_str:>10} {acc_str:>12}  {r['status']}\n")
+            val_str  = str(r["param_value"])
+            avg_str  = f"{r['metric']:.4f}"  if r["metric"] != -1.0 else "     N/A"
+            f1_str   = f"{r['extras'].get('slot_f1',   float('nan')):.4f}" \
+                       if isinstance(r.get("extras"), dict) and "slot_f1"    in r["extras"] else "     N/A"
+            acc_str  = f"{r['extras'].get('intent_acc', float('nan')):.4f}" \
+                       if isinstance(r.get("extras"), dict) and "intent_acc" in r["extras"] else "     N/A"
+            f.write(f"{r['trial']:<7} {val_str:<15} {f1_str:>10} {acc_str:>12} {avg_str:>12}  {r['status']}\n")
         f.write("\n")
         if successful_results:
             best = successful_results[0]
-            f.write(f"BEST  →  {param_name}={best['param_value']}  |  "
-                    f"Slot F1={best['metric']:.4f}")
-            if isinstance(best.get("extras"), dict) and "intent_acc" in best["extras"]:
-                f.write(f"  |  Intent Acc={best['extras']['intent_acc']:.4f}")
+            extras = best.get("extras", {})
+            f.write(f"BEST  →  {param_name}={best['param_value']}"
+                    f"  |  Avg={best['metric']:.4f}")
+            if "slot_f1"    in extras: f.write(f"  |  Slot F1={extras['slot_f1']:.4f}")
+            if "intent_acc" in extras: f.write(f"  |  Intent Acc={extras['intent_acc']:.4f}")
             f.write("\n")
         else:
             f.write("No successful trials.\n")
@@ -337,10 +339,10 @@ def append_final_scores_to_summary(results_dir: str, final_model_scores: Dict[st
         return
 
     score_labels = {
-        "best_dev_f1":     "Best Dev Slot F1",
-        "test_slot_f1":    "Test Slot F1",
-        "test_intent_acc": "Test Intent Accuracy",
-        "dev_intent_acc":  "Dev Intent Accuracy",
+        "avg_metric":  "Avg (Slot F1 + Intent Acc) / 2",
+        "slot_f1":     "Test Slot F1",
+        "intent_acc":  "Test Intent Accuracy",
+        "best_dev_f1": "Best Dev Slot F1 (during tune)",
     }
 
     with open(summary_path, "a", encoding="utf-8") as f:
@@ -377,14 +379,15 @@ def _generate_sequential_summary(parent_dir, all_results, final_config):
             # Per-trial breakdown for this parameter
             trials = result.get("results", [])
             if trials:
-                f.write(f"\n  {'Trial':<7} {'Value':<15} {'Slot F1':>10} {'Intent Acc':>12}  Status\n")
-                f.write("  " + "-" * 60 + "\n")
+                f.write(f"\n  {'Trial':<7} {'Value':<15} {'Slot F1':>10} {'Intent Acc':>12} {'Avg (rank)':>12}  Status\n")
+                f.write("  " + "-" * 70 + "\n")
                 for r in sorted(trials, key=lambda x: x["trial"]):
                     val_str = str(r["param_value"])
-                    f1_str = f"{r['metric']:.4f}" if r["metric"] != -1.0 else "  N/A"
+                    avg_str = f"{r['metric']:.4f}" if r["metric"] != -1.0 else "     N/A"
+                    f1_str  = f"{r['extras'].get('slot_f1',   float('nan')):.4f}" \
+                              if isinstance(r.get("extras"), dict) and "slot_f1"    in r["extras"] else "     N/A"
                     acc_str = f"{r['extras'].get('intent_acc', float('nan')):.4f}" \
-                              if isinstance(r.get("extras"), dict) and "intent_acc" in r["extras"] \
-                              else "     N/A"
-                    f.write(f"  {r['trial']:<7} {val_str:<15} {f1_str:>10} {acc_str:>12}  {r['status']}\n")
+                              if isinstance(r.get("extras"), dict) and "intent_acc" in r["extras"] else "     N/A"
+                    f.write(f"  {r['trial']:<7} {val_str:<15} {f1_str:>10} {acc_str:>12} {avg_str:>12}  {r['status']}\n")
 
     print(f"[Grid] Sequential summary written to: {summary_path}")

@@ -170,8 +170,12 @@ def main():
             best_model_local.load_state_dict(best_state_local)
             final_res, final_intent, _ = eval_loop(test_loader, criterion_slots, criterion_intents,
                                                    best_model_local, lang)
-            return final_res['total']['f'], {
-                "intent_acc": final_intent['accuracy'],
+            slot_f1    = final_res['total']['f']
+            intent_acc = final_intent['accuracy']
+            avg_metric = (slot_f1 + intent_acc) / 2.0   # ranking metric
+            return avg_metric, {
+                "slot_f1":     slot_f1,
+                "intent_acc":  intent_acc,
                 "best_dev_f1": best_f1_local,
             }
 
@@ -184,21 +188,18 @@ def main():
         best_cfg = search_results['best_config']
         print(f"\n=== GRID SEARCH COMPLETE ===\nFinal Best Config: {best_cfg}\n")
 
-        # Evaluate the best config once on test (using the score already returned by the
-        # winning trial — no re-run needed) and append to the summary file.
-        best_param_results = search_results['all_results']
-        best_test_f1   = max(
-            (r['best_metric'] for r in best_param_results.values() if r['best_metric'] != -1.0),
-            default=None
-        )
-        best_intent_acc = max(
-            (r['best_extras'].get('intent_acc', 0) for r in best_param_results.values()
-             if r.get('best_extras')),
-            default=None
-        )
-        final_model_scores = {}
-        if best_test_f1   is not None: final_model_scores['test_slot_f1']    = best_test_f1
-        if best_intent_acc is not None: final_model_scores['test_intent_acc'] = best_intent_acc
+        # Pull the definitive scores from the last search step's best trial —
+        # that trial was evaluated with the fully-fixed config, so its numbers are
+        # the most representative. The stored metric is already the average.
+        last_step_result = list(search_results['all_results'].values())[-1]
+        best_extras = last_step_result.get('best_extras', {})
+        final_model_scores = {
+            k: best_extras[k]
+            for k in ('slot_f1', 'intent_acc', 'best_dev_f1')
+            if k in best_extras
+        }
+        if 'slot_f1' in best_extras and 'intent_acc' in best_extras:
+            final_model_scores['avg_metric'] = (best_extras['slot_f1'] + best_extras['intent_acc']) / 2.0
 
         append_final_scores_to_summary(search_results['results_dir'], final_model_scores)
         return
