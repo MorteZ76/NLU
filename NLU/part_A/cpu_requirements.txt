@@ -1,14 +1,23 @@
-# Specify the extra index URL for CPU-only PyTorch binaries
+#Specify the extra index URL for CPU-only PyTorch binaries
+
 --extra-index-url https://download.pytorch.org/whl/cpu
 
-# Core deep learning framework (CPU version)
+#Core deep learning framework (CPU version)
+
 torch>=1.10.0+cpu
 
-# Scientific computing and numerical operations
+#Scientific computing and numerical operations
+
 numpy>=1.20.0
 
-# Plotting and visualization of loss curves
+#Plotting and visualization of loss curves
+
 matplotlib>=3.4.0
 
-# Progress bar tracking for training epochs
+#Progress bar tracking for training epochs
+
 tqdm>=4.60.0
+
+#Machine Learning metrics (Intent Classification Evaluation)
+
+scikit-learn>=1.0.0
