@@ -12,16 +12,16 @@ class ModelIAS(nn.Module):
         
         self.embedding = nn.Embedding(vocab_len, emb_size, padding_idx=pad_index)
         
-        self.utt_encoder = nn.LSTM(emb_size, hid_size, n_layer, bidirectional=False, batch_first=True)    
-        self.slot_out = nn.Linear(hid_size, out_slot)
-        self.intent_out = nn.Linear(hid_size, out_int)
+        self.utt_encoder = nn.LSTM(emb_size, hid_size, n_layer, bidirectional=True, batch_first=True)    
+        self.slot_out = nn.Linear(hid_size * 2, out_slot)  # * 2 for bidirectional
+        self.intent_out = nn.Linear(hid_size * 2, out_int)  # * 2 for bidirectional
         
         # Dropout layer (to be positioned in Part 2.A)
         self.dropout = nn.Dropout(0.1)
         
     def forward(self, utterance, seq_lengths):
         # utterance.size() = batch_size X seq_len
-        utt_emb = self.embedding(utterance) # utt_emb.size() = batch_size X seq_len X emb_size
+        utt_emb = self.embedding(utterance.long()) # utt_emb.size() = batch_size X seq_len X emb_size
         
         # pack_padded_sequence avoid computation over pad tokens reducing the computational cost
         packed_input = pack_padded_sequence(utt_emb, seq_lengths.cpu().numpy(), batch_first=True)
@@ -32,8 +32,8 @@ class ModelIAS(nn.Module):
         # Unpack the sequence
         utt_encoded, input_sizes = pad_packed_sequence(packed_output, batch_first=True)
         
-        # Get the last hidden state
-        last_hidden = last_hidden[-1,:,:]
+        # Get the last hidden state, which is the concatenation of the last hidden states from both directions
+        last_hidden = torch.cat((last_hidden[-2, :, :], last_hidden[-1, :, :]), dim=-1)
         
         # Compute slot logits
         slots = self.slot_out(utt_encoded)

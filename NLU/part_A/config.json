@@ -1,5 +1,5 @@
 {
-  "experiment_name": "ATIS_Joint_Model_Baseline",
+  "experiment_name": "ATIS_Joint_Model_Bidirectional",
   "model_type": "ModelIAS",
   "optimizer": "Adam",
   "emb_size": 300,
