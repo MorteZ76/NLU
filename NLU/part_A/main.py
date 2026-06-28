@@ -141,7 +141,33 @@ def main():
             run_fn=run_single_trial,
             base_results_dir=os.path.join("bin", config.get('experiment_name', 'grid_search'))
         )
-        print(f"\n=== GRID SEARCH COMPLETE ===\nFinal Best Config: {search_results['best_config']}\n")
+        best_cfg = search_results['best_config']
+        print(f"\n=== GRID SEARCH COMPLETE ===\nFinal Best Config: {best_cfg}\n")
+
+        # Re-evaluate the winning config on dev + test to log definitive scores
+        print("[Tune] Re-evaluating best configuration for final score logging...")
+        set_seed(1234)
+        best_model_kwargs = {
+            "hid_size": best_cfg.get('hidden_size', hid_size),
+            "out_slot": out_slot, "out_int": out_int,
+            "emb_size": best_cfg.get('emb_size', emb_size),
+            "vocab_len": vocab_len, "pad_index": PAD_TOKEN
+        }
+        final_metric, final_extras = run_single_trial(best_cfg)
+        final_model_scores = {
+            "test_slot_f1":    final_metric,
+            "test_intent_acc": final_extras.get("intent_acc"),
+        }
+        final_model_scores = {k: v for k, v in final_model_scores.items() if v is not None}
+
+        # Re-write summary with final model scores appended
+        search_results = sequential_grid_search(
+            param_tuning_order=param_tuning_order,
+            base_config=config,
+            run_fn=run_single_trial,
+            base_results_dir=os.path.join("bin", config.get('experiment_name', 'grid_search')),
+            final_model_scores=final_model_scores,
+        )
         return
 
     # ================= STANDARD TRAINING MODE =================
@@ -159,6 +185,7 @@ def main():
     losses_train, losses_dev = [], []
     best_f1, best_model_state = 0, None
     current_patience = patience 
+    stopped_at_epoch = n_epochs  # will be updated if early stopping fires
 
     pbar = tqdm(range(1, n_epochs + 1), desc="Epoch Progress")
     for epoch in pbar:
@@ -178,11 +205,13 @@ def main():
             if f1 > best_f1:
                 best_f1 = f1
                 best_model_state = {k: v.cpu() for k, v in model.state_dict().items()}
+                best_dev_intent_acc = intent_res['accuracy']
                 current_patience = patience
             else:
                 current_patience -= 1
                 
             if current_patience <= 0:
+                stopped_at_epoch = epoch
                 print(f"\n[Early Stopping] Triggered at Epoch {epoch} due to plateauing validation F1.")
                 break 
 
@@ -200,8 +229,19 @@ def main():
     config['best_dev_f1'] = best_f1
     config['final_test_f1'] = results_test['total']['f']
     config['final_intent_acc'] = intent_test['accuracy']
+
+    final_scores = {
+        "best_dev_f1":     best_f1,
+        "dev_intent_acc":  best_dev_intent_acc if 'best_dev_intent_acc' in dir() else None,
+        "test_slot_f1":    results_test['total']['f'],
+        "test_intent_acc": intent_test['accuracy'],
+        "stopped_at_epoch": stopped_at_epoch,
+    }
+    # Remove None entries
+    final_scores = {k: v for k, v in final_scores.items() if v is not None}
     
-    save_experiment(best_model, config, losses_train, losses_dev, name=experiment_name)
+    save_experiment(best_model, config, losses_train, losses_dev, name=experiment_name,
+                    final_scores=final_scores)
 
 if __name__ == "__main__":
     main()
