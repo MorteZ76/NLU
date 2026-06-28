@@ -16,4 +16,4 @@ tqdm>=4.60.0
 
 # Machine Learning metrics (Intent Classification Evaluation)
 
-scikit-learn>=1.0.0
+scikit-learn>=1.0.0 
