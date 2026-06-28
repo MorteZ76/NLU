@@ -1,0 +1,31 @@
+============================================================
+EXPERIMENT RESULTS — ATIS_Joint_Model_Bidirectional_Drpout
+Saved: 2026-06-28 14:39:34
+============================================================
+
+HYPERPARAMETERS
+------------------------------------------------------------
+  model_type          : ModelIAS
+  optimizer           : Adam
+  emb_size            : 300
+  hidden_size         : 200
+  lr                  : 0.0001
+  clip                : 5
+  n_epochs            : 200
+  patience            : 3
+  batch_size          : 64
+
+FINAL SCORES
+------------------------------------------------------------
+  Best Dev Slot F1          : 0.9769
+  Test Slot F1              : 0.9362
+  Test Intent Accuracy      : 0.9474
+  Dev Intent Accuracy       : 0.9839
+  Stopped at Epoch          : 120
+
+FILES
+------------------------------------------------------------
+  Checkpoint : bin/ATIS_Joint_Model_Bidirectional_Drpout/ATIS_Joint_Model_Bidirectional_Drpout.pt
+  Config     : bin/ATIS_Joint_Model_Bidirectional_Drpout/config.json
+  Loss plot  : bin/ATIS_Joint_Model_Bidirectional_Drpout/loss_plot.png
+  This file  : bin/ATIS_Joint_Model_Bidirectional_Drpout/results_summary.txt
