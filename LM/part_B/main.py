@@ -17,6 +17,10 @@ from model import LM_RNN, LM_LSTM
 from functions import set_seed, init_weights, train_loop, eval_loop, save_experiment, sequential_grid_search, check_nt_asgd_trigger, swap_asgd_weights, restore_asgd_weights
 
 def main():
+    # Anchor all relative paths (bin/, dataset/, config.json) to the script's own directory,
+    # so the script runs correctly regardless of the working directory it is launched from.
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
     # 0. Load default configuration
     config_path = os.path.join(os.path.dirname(__file__), "config.json")
     with open(config_path, 'r') as f:
@@ -137,15 +141,20 @@ def main():
             "pad_index": pad_idx, "emb_dropout": emb_drop, "out_dropout": out_drop,
             "weight_tying": weight_tying
         }
-        
+
         # Construct specific model architecture according to config
-        if model_type == "LSTM":
+        if model_type.upper() == "LSTM":
             lstm_kwargs = {k: v for k, v in model_kwargs.items() if k != 'weight_tying'}
             model = LM_LSTM(**lstm_kwargs).to(device)
         else:
             model = LM_RNN(**model_kwargs).to(device)
-            
-        model.load_state_dict(torch.load(args.model_path, map_location=device))
+
+        model.load_state_dict(torch.load(args.model_path, map_location=device, weights_only=True))
+
+        # Re-establish weight tying after load_state_dict, which severs the shared
+        # tensor reference even though values remain equal.
+        if weight_tying and model_type.upper() != "LSTM":
+            model.output.weight = model.embedding.weight
         
         # Calculate perplexity metrics across validation and test sets
         val_ppl, _ = eval_loop(dev_loader, criterion_eval, model)
@@ -278,7 +287,7 @@ def main():
             losses_train_local = []
             losses_dev_local = []
 
-            for epoch_local in range(1, n_epochs_trial + 1):
+            for _ in range(1, n_epochs_trial + 1):
                 train_loss_local = train_loop(train_loader_local, optimizer_local, criterion_train_local, model_local, clip_trial)
                 losses_train_local.append(train_loss_local)
                 
