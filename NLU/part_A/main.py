@@ -96,8 +96,9 @@ def main():
             "out_int":      out_int,
             "emb_size":     emb_size,
             "vocab_len":    vocab_len,
-            "pad_index":    PAD_TOKEN,
-            "dropout_rate": config.get('dropout_rate', 0.1),
+            "pad_index":      PAD_TOKEN,
+            "dropout_rate":   config.get('dropout_rate', 0.1),
+            "bidirectional":  config.get('bidirectional', True),
         }
         
         model = ModelIAS(**model_kwargs).to(device)

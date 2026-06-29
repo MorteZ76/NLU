@@ -1,6 +1,7 @@
 {
     "experiment_name": "ATIS_Joint_Model_Bidirectional_Drpout",
     "model_type": "ModelIAS",
+    "bidirectional": true,
     "optimizer": "Adam",
     "emb_size": 400,
     "hidden_size": 250,

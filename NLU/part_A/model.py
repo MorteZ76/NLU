@@ -15,7 +15,8 @@ class ModelIAS(nn.Module):
       ---> Slot head:   nn.Linear -> [Batch, NumSlots, SeqLen]  (permuted for CrossEntropyLoss)
       ---> Intent head: nn.Linear -> [Batch, NumIntents]        (from concatenated final hidden states)
     """
-    def __init__(self, hid_size, out_slot, out_int, emb_size, vocab_len, n_layer=1, pad_index=0, dropout_rate=0.1):
+    def __init__(self, hid_size, out_slot, out_int, emb_size, vocab_len, n_layer=1, pad_index=0,
+                 dropout_rate=0.1, bidirectional=True):
         """
         Args:
             hid_size (int): Hidden state size of the LSTM (per direction).
@@ -26,15 +27,18 @@ class ModelIAS(nn.Module):
             n_layer (int): Number of LSTM layers.
             pad_index (int): Padding index ignored by embedding gradients.
             dropout_rate (float): Dropout probability applied after embedding and before output heads.
+            bidirectional (bool): If True, the LSTM encodes both forward and backward directions.
         """
         super(ModelIAS, self).__init__()
 
+        self.bidirectional = bidirectional
+        enc_dim = hid_size * 2 if bidirectional else hid_size
+
         self.embedding = nn.Embedding(vocab_len, emb_size, padding_idx=pad_index)
 
-        # Bidirectional LSTM; output dimension is hid_size * 2 (forward + backward)
-        self.utt_encoder = nn.LSTM(emb_size, hid_size, n_layer, bidirectional=True, batch_first=True)
-        self.slot_out = nn.Linear(hid_size * 2, out_slot)
-        self.intent_out = nn.Linear(hid_size * 2, out_int)
+        self.utt_encoder = nn.LSTM(emb_size, hid_size, n_layer, bidirectional=bidirectional, batch_first=True)
+        self.slot_out = nn.Linear(enc_dim, out_slot)
+        self.intent_out = nn.Linear(enc_dim, out_int)
 
         self.dropout = nn.Dropout(dropout_rate)
 
@@ -60,9 +64,13 @@ class ModelIAS(nn.Module):
         packed_output, (last_hidden, _) = self.utt_encoder(packed_input)
         utt_encoded, _ = pad_packed_sequence(packed_output, batch_first=True)
 
-        # Step 3: Concatenate the final forward and backward hidden states for intent classification
-        # last_hidden[-2] = forward final state, last_hidden[-1] = backward final state
-        last_hidden = torch.cat((last_hidden[-2, :, :], last_hidden[-1, :, :]), dim=-1)
+        # Step 3: Build the sentence representation for intent classification
+        # Bidirectional: concatenate forward and backward final hidden states
+        # Unidirectional: use the single final hidden state directly
+        if self.bidirectional:
+            last_hidden = torch.cat((last_hidden[-2, :, :], last_hidden[-1, :, :]), dim=-1)
+        else:
+            last_hidden = last_hidden[-1, :, :]
 
         # Step 4: Apply dropout before both output heads
         utt_encoded = self.dropout(utt_encoded)

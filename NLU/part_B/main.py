@@ -102,13 +102,14 @@ def run_training(train_loader, dev_loader, config, model, optimizer,
 
 
 def main():
+    # Anchor all relative paths (bin/, dataset/, config.json) to the script's own directory,
+    # so the script runs correctly regardless of the working directory it is launched from.
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
     # ── Config ───────────────────────────────────────────────────────────
     config_path = os.path.join(os.path.dirname(__file__), "config.json")
     with open(config_path) as f:
         config = json.load(f)
-
-    print(f"[Config] Experiment : {config['experiment_name']}")
-    print(f"[Config] BERT model : {config.get('bert_model', 'bert-base-uncased')}")
 
     # ── CLI ──────────────────────────────────────────────────────────────
     parser = argparse.ArgumentParser(description="Joint BERT Intent + Slot Fine-Tuning")
@@ -119,6 +120,24 @@ def main():
     parser.add_argument("--tune",        action="store_true",
                         help="Run sequential hyperparameter grid search.")
     args = parser.parse_args()
+
+    # Normalize path separators so Windows-style backslash paths work on Linux (e.g. Colab).
+    args.model_path = args.model_path.replace("\\", "/")
+
+    # If running in evaluation mode, load the config saved alongside the checkpoint BEFORE
+    # data loading — bert_model drives the tokenizer, so it must be correct from the start.
+    if args.eval_only:
+        checkpoint_dir = os.path.dirname(args.model_path)
+        checkpoint_config_path = os.path.join(checkpoint_dir, "config.json")
+        if os.path.exists(checkpoint_config_path):
+            with open(checkpoint_config_path) as f:
+                config.update(json.load(f))
+            print(f"[Config] Loaded evaluation configuration from {checkpoint_config_path}")
+        else:
+            print(f"[Warning] No checkpoint config found at {checkpoint_config_path}. Falling back to root config.")
+
+    print(f"[Config] Experiment : {config['experiment_name']}")
+    print(f"[Config] BERT model : {config.get('bert_model', 'bert-base-uncased')}")
 
     # ── Seed & device ────────────────────────────────────────────────────
     set_seed(1234)
@@ -146,7 +165,7 @@ def main():
             sys.exit(1)
 
         model = build_model(config, num_slots, num_intents, device)
-        model.load_state_dict(torch.load(args.model_path, map_location=device))
+        model.load_state_dict(torch.load(args.model_path, map_location=device, weights_only=True))
 
         results_dev,  intent_dev,  _ = eval_loop(dev_loader,  criterion_slots, criterion_intents, model, lang)
         results_test, intent_test, _ = eval_loop(test_loader, criterion_slots, criterion_intents, model, lang)

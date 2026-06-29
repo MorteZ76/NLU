@@ -1,6 +1,7 @@
 {
     "experiment_name": "ATIS_Joint_Model_Bidirectional",
     "model_type": "ModelIAS",
+    "bidirectional": true,
     "optimizer": "Adam",
     "emb_size": 300,
     "hidden_size": 200,

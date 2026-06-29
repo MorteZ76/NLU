@@ -130,26 +130,33 @@ def save_experiment(model, hyperparameters, train_losses, dev_losses,
     model_path  = os.path.join(exp_dir, f"{name}.pt")
     config_path = os.path.join(exp_dir, "config.json")
 
+    # 1. Save model parameters
     torch.save(model.state_dict(), model_path)
+    print(f"[Save] Model state dict saved to: {model_path}")
+
+    # 2. Export configuration
     with open(config_path, "w", encoding="utf-8") as f:
         json.dump(hyperparameters, f, indent=4)
+    print(f"[Save] Run configuration saved to: {config_path}")
 
-    # Loss plot
+    # 3. Save loss curves plot
     if train_losses:
         plt.figure(figsize=(8, 5))
         plt.plot(train_losses, label="Train Loss", color="#1f77b4", marker='o', linewidth=2)
         if dev_losses:
             plt.plot(dev_losses, label="Dev Loss", color="#ff7f0e", marker='s',
                      linestyle="--", linewidth=2)
-        plt.xlabel("Epoch")
-        plt.ylabel("Loss")
-        plt.title(f"Training Loss — {name}", fontweight='bold')
+        plt.xlabel("Epoch", fontsize=11)
+        plt.ylabel("Loss", fontsize=11)
+        plt.title(f"Training Loss — {name}", fontsize=13, fontweight='bold')
         plt.grid(True, linestyle=":", alpha=0.6)
-        plt.legend()
-        plt.savefig(os.path.join(exp_dir, "loss_plot.png"), dpi=200, bbox_inches='tight')
+        plt.legend(frameon=True)
+        plot_path = os.path.join(exp_dir, "loss_plot.png")
+        plt.savefig(plot_path, dpi=200, bbox_inches='tight')
         plt.close()
+        print(f"[Save] Loss plot visualization saved to: {plot_path}")
 
-    # Human-readable summary
+    # 4. Human-readable summary
     _DISPLAY_KEYS = ["model_type", "bert_model", "optimizer", "lr", "dropout_rate",
                      "clip", "n_epochs", "patience", "batch_size", "weight_decay"]
     summary_path = os.path.join(exp_dir, "results_summary.txt")
@@ -188,7 +195,7 @@ def save_experiment(model, hyperparameters, train_losses, dev_losses,
             f.write(f"  Loss plot  : {os.path.join(exp_dir, 'loss_plot.png')}\n")
         f.write(f"  This file  : {summary_path}\n")
 
-    print(f"[Save] Results written to: {exp_dir}/")
+    print(f"[Save] Results summary saved to: {summary_path}")
 
 
 # =========================================================================
