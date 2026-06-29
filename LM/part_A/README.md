@@ -192,4 +192,4 @@ python main.py --eval_only --model_path "bin/LSTM_Dropout_AdamW_Final/LSTM_Dropo
 
 ## AI Assistance Disclosure
 
-AI tools (Claude by Anthropic) were used in the development of this project, including assistance with writing and refining the code structure, inline comments, docstrings, and this report.
+AI tools (Claude by Anthropic and Gemini) were used in the development of this project, including assistance with writing and refining the code structure, inline comments, docstrings, and this report.
