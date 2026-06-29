@@ -187,3 +187,9 @@ python main.py --eval_only --model_path "bin/LSTM_Dropout_AdamW_Final/LSTM_Dropo
 - Tightening gradient clipping to `clip=0.1` stabilized AdamW's parameter updates in the final tuning stage.
 
 **Final Result:** The optimized configuration (`LSTM_Dropout_AdamW_Final`) achieves a **Test Perplexity of 115.732**, well below the mandatory threshold of 250.
+
+---
+
+## AI Assistance Disclosure
+
+AI tools (Claude by Anthropic) were used in the development of this project, including assistance with writing and refining the code structure, inline comments, docstrings, and this report.
