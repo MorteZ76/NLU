@@ -17,13 +17,10 @@ from model import LM_RNN, LM_LSTM
 from functions import set_seed, init_weights, train_loop, eval_loop, save_experiment, sequential_grid_search
 
 def main():
-    # 0. Load configuration
+    # 0. Load default configuration (to fetch defaults for argparse)
     config_path = os.path.join(os.path.dirname(__file__), "config.json")
     with open(config_path, 'r') as f:
         config = json.load(f)
-
-    print(f"[Config] Loaded configuration from {config_path}")
-    print(f"[Config] Experiment: {config['experiment_name']} | Model: {config['model_type']} | Optimizer: {config['optimizer']}")
 
     # 1. Command-Line Argument Interface Setup
     parser = argparse.ArgumentParser(description="Autoregressive Language Model Training & Evaluation.")
@@ -44,6 +41,22 @@ def main():
         help="Run hyperparameter grid search using 'tuning_grid' in config.json or a default grid."
     )
     args = parser.parse_args()
+
+    # 1.5 Update configuration if running in eval_only mode
+    if args.eval_only:
+        checkpoint_dir = os.path.dirname(args.model_path)
+        checkpoint_config_path = os.path.join(checkpoint_dir, "config.json")
+        if os.path.exists(checkpoint_config_path):
+            with open(checkpoint_config_path, 'r') as f:
+                checkpoint_config = json.load(f)
+                config.update(checkpoint_config) # Overwrite root config with checkpoint config
+            print(f"[Config] Loaded evaluation configuration from {checkpoint_config_path}")
+        else:
+            print(f"[Warning] Checkpoint config not found at {checkpoint_config_path}. Falling back to root config.")
+    else:
+        print(f"[Config] Loaded configuration from {config_path}")
+
+    print(f"[Config] Experiment: {config['experiment_name']} | Model: {config['model_type']} | Optimizer: {config.get('optimizer', 'N/A')}")
 
     # 2. Seeding & Hardware Configuration
     set_seed(1234)
@@ -82,7 +95,7 @@ def main():
     # Core Configuration Parameters
     experiment_name = config['experiment_name']
     model_type = config['model_type']
-    optimizer_name = config['optimizer']
+    optimizer_name = config.get('optimizer', 'SGD')
     emb_size = config['emb_size']
     hid_size = config['hidden_size']
     lr = config['lr']
@@ -102,31 +115,14 @@ def main():
             
         print(f"\n=== Evaluation Mode ===")
         print(f"[Load] Loading model parameters from: {args.model_path}")
-
-        # Load architecture hyperparameters from the config saved alongside the checkpoint,
-        # so that emb_size/hidden_size always match the weights being loaded.
-        checkpoint_dir = os.path.dirname(args.model_path)
-        checkpoint_config_path = os.path.join(checkpoint_dir, "config.json")
-        if os.path.exists(checkpoint_config_path):
-            with open(checkpoint_config_path, 'r') as f:
-                checkpoint_config = json.load(f)
-            eval_emb_size   = checkpoint_config.get('emb_size',    emb_size)
-            eval_hid_size   = checkpoint_config.get('hidden_size', hid_size)
-            eval_model_type = checkpoint_config.get('model_type',  model_type)
-            print(f"[Load] Using architecture from checkpoint config: "
-                  f"model={eval_model_type}, emb={eval_emb_size}, hidden={eval_hid_size}")
-        else:
-            print(f"[Warning] No config.json found in {checkpoint_dir}. "
-                  f"Falling back to current config.json — sizes must match manually.")
-            eval_emb_size   = emb_size
-            eval_hid_size   = hid_size
-            eval_model_type = model_type
+        print(f"[Load] Using architecture: model={model_type}, emb={emb_size}, hidden={hid_size}")
 
         # Instantiate model architecture and load saved parameters
-        if eval_model_type.upper() == 'LSTM':
-            model = LM_LSTM(eval_emb_size, eval_hid_size, vocab_len, pad_index=pad_idx).to(device)
+        if model_type.upper() == 'LSTM':
+            model = LM_LSTM(emb_size, hid_size, vocab_len, pad_index=pad_idx).to(device)
         else:
-            model = LM_RNN(eval_emb_size, eval_hid_size, vocab_len, pad_index=pad_idx).to(device)
+            model = LM_RNN(emb_size, hid_size, vocab_len, pad_index=pad_idx).to(device)
+            
         model.load_state_dict(torch.load(args.model_path, map_location=device))
         
         # Calculate perplexity metrics across validation and test sets
