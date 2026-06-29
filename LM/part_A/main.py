@@ -42,6 +42,9 @@ def main():
     )
     args = parser.parse_args()
 
+    # Normalize path separators so Windows-style backslash paths work on Linux (e.g. Colab).
+    args.model_path = args.model_path.replace("\\", "/")
+
     # 1.5 Update configuration if running in eval_only mode
     if args.eval_only:
         checkpoint_dir = os.path.dirname(args.model_path)
