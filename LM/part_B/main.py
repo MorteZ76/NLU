@@ -13,17 +13,14 @@ from torch.utils.data import DataLoader
 
 # Import modular project blocks
 from utils import download_ptb, read_file, Lang, PennTreeBank, collate_fn
-from model import LM_RNN
+from model import LM_RNN, LM_LSTM
 from functions import set_seed, init_weights, train_loop, eval_loop, save_experiment, sequential_grid_search, check_nt_asgd_trigger, swap_asgd_weights, restore_asgd_weights
 
 def main():
-    # 0. Load configuration
+    # 0. Load default configuration
     config_path = os.path.join(os.path.dirname(__file__), "config.json")
     with open(config_path, 'r') as f:
         config = json.load(f)
-
-    print(f"[Config] Loaded configuration from {config_path}")
-    print(f"[Config] Experiment: {config['experiment_name']} | Model: {config['model_type']} | Optimizer: {config['optimizer']}")
 
     # 1. Command-Line Argument Interface Setup
     parser = argparse.ArgumentParser(description="Autoregressive Language Model Training & Evaluation.")
@@ -35,7 +32,7 @@ def main():
     parser.add_argument(
         "--model_path", 
         type=str, 
-        default=f"bin/{config['experiment_name']}/{config['experiment_name']}.pt", 
+        default=f"bin/{config.get('experiment_name', 'RNN')}/{config.get('experiment_name', 'RNN')}.pt", 
         help="Relative path to a pre-trained PyTorch weight checkpoint (.pt)."
     )
     parser.add_argument(
@@ -44,6 +41,20 @@ def main():
         help="Run hyperparameter grid search using 'tuning_grid' in config.json or a default grid."
     )
     args = parser.parse_args()
+
+    # ================= CONFIG OVERRIDE (EVAL ONLY) =================
+    # If running in evaluation mode, prioritize the config stored with the model
+    if args.eval_only:
+        model_dir = os.path.dirname(args.model_path)
+        eval_config_path = os.path.join(model_dir, "config.json")
+        if os.path.exists(eval_config_path):
+            print(f"[Config] Loading evaluation configuration from {eval_config_path}")
+            with open(eval_config_path, 'r') as f:
+                config = json.load(f)
+        else:
+            print(f"[Warning] No config.json found at {eval_config_path}. Falling back to root config.")
+            
+    print(f"[Config] Experiment: {config.get('experiment_name')} | Model: {config.get('model_type')} | Optimizer: {config.get('optimizer')}")
 
     # 2. Seeding & Hardware Configuration
     set_seed(1234)
@@ -67,33 +78,33 @@ def main():
     dev_dataset = PennTreeBank(dev_raw, lang)
     test_dataset = PennTreeBank(test_raw, lang)
 
-    # Initialize Validation and Test DataLoaders
-    dev_loader = DataLoader(
-        dev_dataset, 
-        batch_size=config['batch_size'], 
-        collate_fn=partial(collate_fn, pad_token=pad_idx, device=device)
-    )
-    test_loader = DataLoader(
-        test_dataset, 
-        batch_size=config['batch_size'], 
-        collate_fn=partial(collate_fn, pad_token=pad_idx, device=device)
-    )
-
     # Core Configuration Parameters
-    experiment_name = config['experiment_name']
-    model_type = config['model_type']
-    optimizer_name = config['optimizer']
-    emb_size = config['emb_size']
-    hid_size = config['hidden_size']
-    lr = config['lr']
-    patience = config['patience']
-    batch_size = config['batch_size']
-    clip = config['clip']
-    n_epochs = config['n_epochs']
+    experiment_name = config.get('experiment_name', 'default_exp')
+    model_type = config.get('model_type', 'RNN')
+    optimizer_name = config.get('optimizer', 'SGD')
+    emb_size = config.get('emb_size', 200)
+    hid_size = config.get('hidden_size', 200)
+    lr = config.get('lr', 10)
+    patience = config.get('patience', 3)
+    batch_size = config.get('batch_size', 64)
+    clip = config.get('clip', 0.1)
+    n_epochs = config.get('n_epochs', 20)
     weight_tying = config.get('weight_tying', False)
     emb_drop = config.get('emb_drop', 0.1)
     out_drop = config.get('out_drop', 0.1)
     non_mono = config.get('non_mono', 5)
+
+    # Initialize Validation and Test DataLoaders
+    dev_loader = DataLoader(
+        dev_dataset, 
+        batch_size=batch_size, 
+        collate_fn=partial(collate_fn, pad_token=pad_idx, device=device)
+    )
+    test_loader = DataLoader(
+        test_dataset, 
+        batch_size=batch_size, 
+        collate_fn=partial(collate_fn, pad_token=pad_idx, device=device)
+    )
 
     def resolve_model_sizes(emb_value, hidden_value):
         if weight_tying and emb_value != hidden_value:
@@ -127,7 +138,12 @@ def main():
             "weight_tying": weight_tying
         }
         
-        model = LM_RNN(**model_kwargs).to(device)
+        # Construct specific model architecture according to config
+        if model_type == "LSTM":
+            lstm_kwargs = {k: v for k, v in model_kwargs.items() if k != 'weight_tying'}
+            model = LM_LSTM(**lstm_kwargs).to(device)
+        else:
+            model = LM_RNN(**model_kwargs).to(device)
             
         model.load_state_dict(torch.load(args.model_path, map_location=device))
         
@@ -140,6 +156,38 @@ def main():
         print(f"Validation Perplexity (PPL): {val_ppl:.3f}")
         print(f"Test Set Perplexity (PPL):   {test_ppl:.3f}")
         print(f"{'='*48}")
+
+        # === Sample Sentence Generation ===
+        print("\n=== Generating Sample Sentences ===")
+        model.eval()
+        temperature = 0.8  # Slight temperature scaling for coherent generation
+        vocab_size_real = len(lang.id2word)
+
+        for i in range(5):
+            # Pick a random valid token to prime the network
+            start_id = pad_idx
+            while start_id == pad_idx or lang.id2word[start_id] in ["<pad>", "<eos>"]:
+                start_id = torch.randint(0, vocab_size_real, (1,)).item()
+            
+            current_seq = torch.tensor([[start_id]]).to(device)
+            words = [lang.id2word[start_id]]
+
+            with torch.no_grad():
+                for _ in range(25): # Limit to 25 generated tokens
+                    output = model(current_seq) # [Batch, Vocab, Seq_Len]
+                    logits = output[0, :, -1] / temperature
+                    probs = torch.softmax(logits, dim=0)
+                    next_id = torch.multinomial(probs, 1).unsqueeze(0)
+                    
+                    word = lang.id2word[next_id.item()]
+                    if word == "<eos>":
+                        break
+                    
+                    words.append(word)
+                    current_seq = torch.cat([current_seq, next_id], dim=1)
+            
+            print(f"Sample {i+1}: {' '.join(words)}.")
+        print("===================================\n")
         return
 
     # ================= TUNING MODE =================
@@ -147,42 +195,6 @@ def main():
         tuning_grid = config.get('tuning_grid', {})
         
         param_tuning_order = [
-            # {
-            #     "name": "batch_size",
-            #     # they were almost the same from ???.4 to ???.3 so i decided to go with what i had before which is ???
-            #     "values": tuning_grid.get("batch_size", [16, 32, 64, 128])
-            # },
-            # {
-            #     "name": "hidden_size",
-            #     # ??? was the best so we moved from 400 to 200
-            #     "values": tuning_grid.get("hidden_size", [100, 200, 300, 400])
-            # },
-            # {
-            #     "name": "lr",
-            #     # 10 was the best so we changed from 5 to 10
-            #     # "values": tuning_grid.get("lr", [0.01, 0.05, 0.1, 0.5, 1, 5])
-            #     "values": tuning_grid.get("lr", [5, 10, 50])
-            # },
-            # {
-            #     "name": "emb_size",
-            #     # ??? was the best so we moved from 400 to 200
-            #     "values": tuning_grid.get("emb_size", [100, 200, 300, 400])
-            # },
-            # {
-            #     "name": "clip",
-            #     # ??? was the best so we moved from ??? to ???
-            #     "values": tuning_grid.get("clip", [0.1, 0.5, 1, 3, 5, 10, 50])
-            # },
-            # {
-            #     "name": "emb_drop",
-            #     # 0.1 was the best so we moved from 0.45 to 0.1
-            #     "values": tuning_grid.get("emb_drop", [0.1, 0.3, 0.5])
-            # },
-            # {
-            #     "name": "out_drop",
-            #     # 0.1 was the best so we moved from 0.45 to 0.1
-            #     "values": tuning_grid.get("out_drop", [0.1, 0.3, 0.5])
-            # },
             {
                 "name": "non_mono",
                 # 1 was the best so we moved from 3 to 1
@@ -237,8 +249,12 @@ def main():
                 "weight_tying": trial_cfg.get('weight_tying', weight_tying)
             }
 
-            # Model selection
-            model_local = LM_RNN(**model_kwargs).to(device_local)
+            # Model selection handling
+            if current_model_type == "LSTM":
+                lstm_kwargs = {k: v for k, v in model_kwargs.items() if k != 'weight_tying'}
+                model_local = LM_LSTM(**lstm_kwargs).to(device_local)
+            else:
+                model_local = LM_RNN(**model_kwargs).to(device_local)
 
             model_local.apply(init_weights)
 
@@ -298,7 +314,10 @@ def main():
                         break
 
             # Restore best model and evaluate on test
-            best_model_local = LM_RNN(**model_kwargs).to(device_local)
+            if current_model_type == "LSTM":
+                best_model_local = LM_LSTM(**lstm_kwargs).to(device_local)
+            else:
+                best_model_local = LM_RNN(**model_kwargs).to(device_local)
 
             best_model_local.load_state_dict(best_state_local)
 
@@ -360,7 +379,11 @@ def main():
         "weight_tying": weight_tying
     }
     
-    model = LM_RNN(**model_kwargs).to(device)
+    if model_type == "LSTM":
+        lstm_kwargs = {k: v for k, v in model_kwargs.items() if k != 'weight_tying'}
+        model = LM_LSTM(**lstm_kwargs).to(device)
+    else:
+        model = LM_RNN(**model_kwargs).to(device)
         
     model.apply(init_weights)
 
@@ -424,7 +447,10 @@ def main():
                 break
 
     # Restore the best performing parameters from the training run
-    best_model = LM_RNN(**model_kwargs).to(device)
+    if model_type == "LSTM":
+        best_model = LM_LSTM(**lstm_kwargs).to(device)
+    else:
+        best_model = LM_RNN(**model_kwargs).to(device)
         
     best_model.load_state_dict(best_model_state)
 
