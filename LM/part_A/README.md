@@ -6,6 +6,22 @@ The model is trained autoregressively to predict the next word token by minimizi
 
 ---
 
+## Task Description
+
+The objective of Part 1.A is to improve upon the baseline `LM_RNN` model by incrementally applying a set of architectural modifications and optimization techniques. The rules are:
+
+- Modifications must be added **one at a time**. If a modification degrades performance it may be removed, but it must still be reported and discussed.
+- Performance is measured using **Perplexity (PPL)** and reported for every experiment.
+- Hyperparameter optimization — especially the learning rate — is a required part of the task.
+
+**Mandatory modifications (PPL must remain below 250 after each):**
+
+1. Replace `nn.RNN` with a Long Short-Term Memory (`nn.LSTM`) network.
+2. Add two dropout layers: one after the embedding layer, one before the final linear layer.
+3. Replace the SGD optimizer with AdamW.
+
+---
+
 ## Assignment Requirements
 
 As specified by the Teaching Assistants (TAs), this submission fulfills the following academic criteria:
