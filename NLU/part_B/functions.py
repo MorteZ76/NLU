@@ -12,10 +12,8 @@ from typing import Any, Callable, Dict, List, Tuple
 from tqdm import tqdm
 from sklearn.metrics import classification_report
 
-try:
-    from conll import evaluate
-except ImportError:
-    pass
+# conll is downloaded at runtime by utils.prepare_bert_data().
+# Imported lazily inside eval_loop so the file is guaranteed to exist first.
 
 
 # =========================================================================
@@ -102,7 +100,13 @@ def eval_loop(data, criterion_slots, criterion_intents, model, lang):
                 hyp_slots.append(list(zip(words, pred_labels)))
 
     try:
+        from conll import evaluate
         results = evaluate(ref_slots, hyp_slots)
+    except ImportError:
+        raise RuntimeError(
+            "[Eval] conll.py not found. Run prepare_bert_data() before eval_loop "
+            "so it can be downloaded automatically."
+        )
     except Exception as ex:
         print(f"[Eval] conll evaluate warning: {ex}")
         results = {"total": {"f": 0.0}}

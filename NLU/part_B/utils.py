@@ -27,11 +27,15 @@ def download_atis_and_conll(dest_dir="dataset/ATIS"):
             print(f"[Dataset] Downloading {filename}...")
             urllib.request.urlretrieve(url, filepath)
 
-    if not os.path.exists("conll.py"):
+    # conll.py must live next to this file so 'from conll import evaluate' works
+    # regardless of the working directory the user launches from.
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    conll_path = os.path.join(script_dir, "conll.py")
+    if not os.path.exists(conll_path):
         print("[Dataset] Downloading conll.py evaluation script...")
         urllib.request.urlretrieve(
             "https://raw.githubusercontent.com/BrownFortress/NLU-2024-Labs/main/labs/conll.py",
-            "conll.py"
+            conll_path,
         )
 
 def load_data(path):

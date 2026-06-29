@@ -1,5 +1,9 @@
 import sys
 import os
+# Guarantee that conll.py (downloaded next to this script) is importable
+# regardless of what directory the user launches from.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 import json
 import argparse
 import numpy as np
