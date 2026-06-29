@@ -102,12 +102,31 @@ def main():
             
         print(f"\n=== Evaluation Mode ===")
         print(f"[Load] Loading model parameters from: {args.model_path}")
-        
-        # Instantiate model architecture and load saved parameters
-        if model_type.upper() == 'LSTM':
-            model = LM_LSTM(emb_size, hid_size, vocab_len, pad_index=pad_idx).to(device)
+
+        # Load architecture hyperparameters from the config saved alongside the checkpoint,
+        # so that emb_size/hidden_size always match the weights being loaded.
+        checkpoint_dir = os.path.dirname(args.model_path)
+        checkpoint_config_path = os.path.join(checkpoint_dir, "config.json")
+        if os.path.exists(checkpoint_config_path):
+            with open(checkpoint_config_path, 'r') as f:
+                checkpoint_config = json.load(f)
+            eval_emb_size   = checkpoint_config.get('emb_size',    emb_size)
+            eval_hid_size   = checkpoint_config.get('hidden_size', hid_size)
+            eval_model_type = checkpoint_config.get('model_type',  model_type)
+            print(f"[Load] Using architecture from checkpoint config: "
+                  f"model={eval_model_type}, emb={eval_emb_size}, hidden={eval_hid_size}")
         else:
-            model = LM_RNN(emb_size, hid_size, vocab_len, pad_index=pad_idx).to(device)
+            print(f"[Warning] No config.json found in {checkpoint_dir}. "
+                  f"Falling back to current config.json — sizes must match manually.")
+            eval_emb_size   = emb_size
+            eval_hid_size   = hid_size
+            eval_model_type = model_type
+
+        # Instantiate model architecture and load saved parameters
+        if eval_model_type.upper() == 'LSTM':
+            model = LM_LSTM(eval_emb_size, eval_hid_size, vocab_len, pad_index=pad_idx).to(device)
+        else:
+            model = LM_RNN(eval_emb_size, eval_hid_size, vocab_len, pad_index=pad_idx).to(device)
         model.load_state_dict(torch.load(args.model_path, map_location=device))
         
         # Calculate perplexity metrics across validation and test sets
