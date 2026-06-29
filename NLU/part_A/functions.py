@@ -174,17 +174,19 @@ def save_experiment(model, hyperparameters, train_losses, dev_metrics, name="bas
     os.makedirs("bin", exist_ok=True)
     exp_dir = os.path.join("bin", name)
     os.makedirs(exp_dir, exist_ok=True)
-    
-    # Save model parameters
+
+    # 1. Save model parameters
     model_path = os.path.join(exp_dir, f"{name}.pt")
     torch.save(model.state_dict(), model_path)
-    
-    # Export configuration
+    print(f"[Save] Model state dict saved to: {model_path}")
+
+    # 2. Export configuration
     config_path = os.path.join(exp_dir, "config.json")
     with open(config_path, "w", encoding="utf-8") as f:
         json.dump(hyperparameters, f, indent=4)
-        
-    # Visualization (Loss vs Epochs)
+    print(f"[Save] Run configuration saved to: {config_path}")
+
+    # 3. Save loss curves plot
     if train_losses:
         plt.figure(figsize=(8, 5))
         plt.plot(train_losses, label="Train Loss", color="#1f77b4", marker='o', linewidth=2)
@@ -195,10 +197,12 @@ def save_experiment(model, hyperparameters, train_losses, dev_metrics, name="bas
         plt.title(f"Training Loss - {name}", fontsize=13, fontweight='bold')
         plt.grid(True, linestyle=":", alpha=0.6)
         plt.legend(frameon=True)
-        plt.savefig(os.path.join(exp_dir, "loss_plot.png"), dpi=200, bbox_inches='tight')
+        plot_path = os.path.join(exp_dir, "loss_plot.png")
+        plt.savefig(plot_path, dpi=200, bbox_inches='tight')
         plt.close()
+        print(f"[Save] Loss plot visualization saved to: {plot_path}")
 
-    # Human-readable results summary
+    # 4. Human-readable results summary
     summary_path = os.path.join(exp_dir, "results_summary.txt")
     with open(summary_path, "w", encoding="utf-8") as f:
         f.write("=" * 60 + "\n")
@@ -237,7 +241,7 @@ def save_experiment(model, hyperparameters, train_losses, dev_metrics, name="bas
             f.write(f"  Loss plot  : {os.path.join(exp_dir, 'loss_plot.png')}\n")
         f.write(f"  This file  : {summary_path}\n")
 
-    print(f"[Save] Results summary written to: {summary_path}")
+    print(f"[Save] Results summary saved to: {summary_path}")
 
 
 def grid_search(param_name: str,
