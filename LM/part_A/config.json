@@ -1,5 +1,5 @@
 {
-  "experiment_name": "LSTM_Dropout_AdamW",
+  "experiment_name": "LSTM_Dropout_AdamW_Final",
   "model_type": "LSTM",
   "optimizer": "AdamW",
   "emb_size": 400,
