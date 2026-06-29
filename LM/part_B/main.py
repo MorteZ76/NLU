@@ -46,6 +46,9 @@ def main():
     )
     args = parser.parse_args()
 
+    # Normalize path separators so Windows-style backslash paths work on Linux (e.g. Colab).
+    args.model_path = args.model_path.replace("\\", "/")
+
     # ================= CONFIG OVERRIDE (EVAL ONLY) =================
     # If running in evaluation mode, prioritize the config stored with the model
     if args.eval_only:
