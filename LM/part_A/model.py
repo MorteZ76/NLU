@@ -67,37 +67,34 @@ class LM_LSTM(nn.Module):
                  emb_dropout=0.1, n_layers=1):
         super(LM_LSTM, self).__init__()
 
-        # Token ids to vectors
+        # Continuous representation space for discrete tokens
         self.embedding = nn.Embedding(output_size, emb_size, padding_idx=pad_index)
 
-        # STEP 2a: First Dropout layer (applied after embedding)
+        # Dropout applied after embedding to regularize input representations
         self.emb_dropout = nn.Dropout(emb_dropout)
 
-        # STEP 1: Replace nn.RNN with nn.LSTM (from previous step)
+        # LSTM layer for sequential context modeling
         self.lstm = nn.LSTM(emb_size, hidden_size, n_layers, bidirectional=False, batch_first=True)
 
         self.pad_token = pad_index
 
-        # STEP 2b: Second Dropout layer (applied before final linear layer)
+        # Dropout applied before the final projection to prevent feature co-adaptation
         self.out_dropout = nn.Dropout(out_dropout)
 
-        # Linear layer to project the hidden layer to our output space
+        # Linear decoder projection mapping hidden states back to vocabulary logits
         self.output = nn.Linear(hidden_size, output_size)
 
     def forward(self, input_sequence):
-        # Get embeddings
-        emb = self.embedding(input_sequence)
+        # Step 1: Map input IDs to dense continuous vectors; apply embedding regularization
+        # Shape transition: [B, T] -> [B, T, Emb]
+        emb = self.emb_dropout(self.embedding(input_sequence))
 
-        # Apply first dropout
-        emb = self.emb_dropout(emb)
-
-        # Pass through LSTM
+        # Step 2: Pass regularized embeddings through the LSTM
+        # Shape transition: [B, T, Emb] -> [B, T, Hid]
         lstm_out, _ = self.lstm(emb)
 
-        # Apply second dropout
-        lstm_out = self.out_dropout(lstm_out)
-
-        # Project to vocabulary size and permute for CrossEntropyLoss expected shape
-        output = self.output(lstm_out).permute(0, 2, 1)
+        # Step 3: Apply output dropout, project to vocabulary dimensions, and permute
+        # Shape transitions: [B, T, Hid] -> [B, T, Vocab] -> [B, Vocab, T]
+        output = self.output(self.out_dropout(lstm_out)).permute(0, 2, 1)
 
         return output

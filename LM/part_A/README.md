@@ -1,131 +1,173 @@
-# **Language Modeling (LM) \- Part 1.A**
+# Language Modeling (LM) — Part 1.A
 
-This repository contains the clean, fully-modularized implementation of Part 1.A (Baseline Vanilla Recurrent Neural Network Language Model) evaluated on the Penn TreeBank (PTB) dataset.
+This directory contains a clean, fully-modularized implementation of Part 1.A: a Baseline Vanilla Recurrent Neural Network Language Model evaluated on the Penn TreeBank (PTB) dataset.
 
-The baseline model is trained autoregressively to predict the next word token by optimizing cross-entropy loss over shifted inputs.
+The model is trained autoregressively to predict the next word token by minimizing cross-entropy loss over shifted input sequences.
 
-## **Assignment Requirements & Guidelines**
+---
 
-As instructed by the Teaching Assistants (TAs), this sub-folder is designed to fulfill the following strict operational and academic criteria:
+## Assignment Requirements
 
-* **Modular Architecture:** The code must be completely separated into distinct files (utils.py, model.py, functions.py, and main.py) inside this subdirectory.  
-* **Mandatory Performance Threshold:** Through hyperparameter optimization and incremental modifications, the final achieved test perplexity must be strictly below 250 .  
-* **Incremental Experimentation:** Modifications to the baseline architecture must be added one at a time. If a specific technique degrades performance, it can be removed before testing the next modification. Both successful and unsuccessful experiments must be recorded.  
-* **Hyperparameter Tuning:** Active optimization of critical parameters (specifically the learning rate, embedding/hidden dimensions, and batch sizes) is required to minimize Perplexity.  
-* **No Notebooks:** Only clean, bug-free, and well-documented Python scripts are accepted.
+As specified by the Teaching Assistants (TAs), this submission fulfills the following academic criteria:
 
-## **File and Directory Structure**
+- **Modular Architecture:** Code is separated into distinct files (`utils.py`, `model.py`, `functions.py`, `main.py`).
+- **Performance Threshold:** The final test perplexity must fall strictly below **250**.
+- **Incremental Experimentation:** Each architectural modification is applied one at a time. Unsuccessful changes are removed before testing the next. All experiments are recorded below.
+- **Hyperparameter Tuning:** Sequential grid search is used to optimize learning rate, embedding/hidden dimensions, batch size, and gradient clipping.
+- **No Notebooks:** Only clean, well-documented Python scripts are submitted.
 
-LM/  
-└── Part\_A/  
-    ├── utils.py              \# Data preprocessors, Lang vocabulary class, and batch collators  
-    ├── model.py              \# PyTorch model definition (LM\_RNN & LM\_LSTM)  
-    ├── functions.py          \# Seeding, weight initializers, train/eval loops, and plot utilities  
-    ├── main.py               \# Command-line-driven execution orchestrator  
-    ├── requirements.txt      \# Project library dependencies (Standard/GPU)  
-    ├── cpu\_requirements.txt  \# CPU-only PyTorch library dependencies  
-    ├── README.md             \# This academic documentation, execution guide, and experimental log  
-    ├── dataset/              \# Stored raw Penn TreeBank text split files  
-    └── bin/                  \# Saved model checkpoints, config parameters, and metrics  
-        └── LSTM\_Dropout\_AdamW\_Final/  
-            ├── LSTM\_Dropout\_AdamW\_Final.pt    \# Final PyTorch model state-dict checkpoint  
-            ├── config.json                    \# Final recorded hyperparameters  
-            └── loss\_plot.png                  \# Training vs. Validation Loss curves
+---
 
-## **Technical Features**
+## File and Directory Structure
 
-* **Strict Seeding for Reproducibility:** A fixed global seed of 1234 is applied across all random number generators (Python, NumPy, and PyTorch CPU/CUDA backends) to ensure deterministic weights initialization and sequence batching.  
-* **Smart Parameter Initializations:** Applies professional initializations (Xavier Uniform for input-to-hidden projections, Orthogonal Initialization for hidden-to-hidden recurrent weights to mitigate gradient instability, and Uniform bounding for linear decoding layers).  
-* **Automated Experiment Tracking & Visualization:** The save\_experiment function automatically serializes model weights, saves the exact hyperparameter configuration (config.json), and generates visual plots of the Training vs. Validation Loss curves (loss\_plot.png) for immediate visual evaluation.  
-* **Flexible Action Modes:** Supports running a full training loop with early stopping, hyperparameter tuning, or loading pre-trained parameters directly to evaluate performance on the test set.
+```
+LM/
+└── part_A/
+    ├── utils.py              # Data preprocessing, Lang vocabulary class, batch collators
+    ├── model.py              # PyTorch model definitions (LM_RNN & LM_LSTM)
+    ├── functions.py          # Seeding, weight initialization, train/eval loops, grid search, plot utilities
+    ├── main.py               # Command-line execution orchestrator
+    ├── requirements.txt      # Standard / GPU library dependencies
+    ├── cpu_requirements.txt  # CPU-only PyTorch dependencies
+    ├── README.md             # This documentation, execution guide, and experimental log
+    ├── dataset/              # Raw Penn TreeBank text split files
+    └── bin/                  # Saved model checkpoints, configs, and metrics
+        └── LSTM_Dropout_AdamW_Final/
+            ├── LSTM_Dropout_AdamW_Final.pt    # Final model state-dict checkpoint
+            ├── config.json                    # Final hyperparameter configuration
+            └── loss_plot.png                  # Training vs. Validation Loss curves
+```
 
-## **Mathematical Foundations**
+---
 
-### **Perplexity (PPL)**
+## Technical Features
 
-The core metric evaluated is Perplexity, which mathematically represents the exponential of the average Cross-Entropy loss computed over all non-padded tokens  :
+- **Strict Reproducibility:** A fixed global seed of `1234` is applied across all random number generators (Python, NumPy, PyTorch CPU/CUDA) to guarantee deterministic weight initialization and batch ordering.
+- **Custom Weight Initialization:** Applies Xavier Uniform for input-to-hidden projections, Orthogonal Initialization for hidden-to-hidden recurrent weights (mitigates gradient instability), and uniform bounds for linear decoder layers.
+- **Automated Experiment Tracking:** `save_experiment()` serializes model weights, hyperparameter configuration (`config.json`), and Training vs. Validation Loss curves (`loss_plot.png`) for every run.
+- **Flexible Execution Modes:** Supports full training with early stopping (`default`), sequential hyperparameter grid search (`--tune`), and direct evaluation from a saved checkpoint (`--eval_only`).
 
-## **Installation & Setup**
+---
 
-Before running the model, make sure to install all the necessary dependencies. Navigate to the Part\_A directory and choose the appropriate requirements file based on your hardware:
+## Mathematical Foundation
 
-**Option A: Standard / GPU Setup**
+### Perplexity (PPL)
 
-For environments with CUDA-compatible GPUs:
+Perplexity is the primary evaluation metric. It represents the exponential of the average cross-entropy loss computed over all non-padded tokens:
 
-cd LM/Part\_A  
-pip install \-r requirements.txt
+```
+PPL = exp( sum(loss_i) / sum(tokens_i) )
+```
 
-**Option B: CPU-Only Setup**
+Lower perplexity indicates a better-fitting model — the model assigns higher probability to the correct next token on average.
 
-If you do not have a dedicated GPU and wish to install lighter, CPU-only PyTorch binaries:
+---
 
-cd LM/Part\_A  
-pip install \-r cpu\_requirements.txt
+## Installation & Setup
 
-## **Execution Guidelines**
+Navigate to the `part_A` directory and install the appropriate dependencies based on your hardware:
 
-**Option 1: Standard Training**
+**Option A — Standard / GPU Setup**
 
-Runs the full training corpus, validates performance, and outputs artifacts (checkpoints, configs, and plots) to the /bin directory.
+```bash
+cd LM/part_A
+pip install -r requirements.txt
+```
 
+**Option B — CPU-Only Setup**
+
+```bash
+cd LM/part_A
+pip install -r cpu_requirements.txt
+```
+
+---
+
+## Execution
+
+**Standard Training**
+
+Runs the full training loop, validates performance per epoch with early stopping, and saves all artifacts to `bin/`.
+
+```bash
 python main.py
+```
 
-**Option 2: Hyperparameter Tuning**
+**Hyperparameter Tuning**
 
-Runs the sequential grid search mapped out in the configuration file.
+Runs the sequential grid search defined in `param_tuning_order` inside `main.py`. Edit that list to re-enable any commented-out parameter blocks.
 
-python main.py \--tune
+```bash
+python main.py --tune
+```
 
-## **Experimental Log & Results**
+**Evaluation Only**
 
-Below is the record of incremental architectural modifications, hyperparameter configurations, and their corresponding validation and test Perplexities. Modifications were applied sequentially to map their exact impact on the model.
+Skips training and evaluates a saved checkpoint directly on the validation and test sets.
 
-| Exp ID | Model Architecture & State | Modifications / Tuning Step | Validation PPL | Test PPL | Status |
-| :---- | :---- | :---- | :---- | :---- | :---- |
-| **0** | **Baseline RNN** (LM\_RNN) | Vanilla Recurrent Baseline | 169.334 | 161.832 | Base |
+```bash
+python main.py --eval_only --model_path "bin/<experiment_name>/<experiment_name>.pt"
+```
+
+---
+
+## Experimental Log
+
+The table below records each incremental architectural modification and its impact on validation and test perplexity. Modifications were applied sequentially to isolate their individual effect.
+
+| Exp | Model Architecture | Modification | Val PPL | Test PPL | Decision |
+|:---:|:---|:---|:---:|:---:|:---:|
+| **0** | Baseline RNN | Vanilla recurrent baseline (LM_RNN) | 169.334 | 161.832 | Base |
 | **1** | Baseline LSTM | Replaced RNN with LSTM | 154.677 | 149.522 | Kept |
-| **2** | LSTM \+ Dropout | Added 2 Dropout layers | 151.661 | 146.902 | Kept |
-| **3** | LSTM \+ Dropout \+ AdamW | Replaced SGD with AdamW | 133.246 | 122.838 | Kept |
-| **4** | LSTM Tuning: Batch Size | batch\_size \= 16 | 132.970 | 122.477 | Kept |
-| **5** | LSTM Tuning: Hidden Size | hidden\_size \= 400 | 125.861 | 117.881 | Kept |
-| **6** | LSTM Tuning: Learning Rate | lr \= 0.001 (Retained Best) | 125.861 | 117.881 | Kept |
-| **7** | LSTM Tuning: Embedding Size | emb\_size \= 400 | 125.286 | 116.656 | Kept |
-| **8** | **Final Model** | **clip \= 0.1** | **123.429** | **115.732** | **FINAL** |
+| **2** | LSTM + Dropout | Added 2 dropout layers (emb + output) | 151.661 | 146.902 | Kept |
+| **3** | LSTM + Dropout + AdamW | Replaced SGD with AdamW optimizer | 133.246 | 122.838 | Kept |
+| **4** | Tuning: Batch Size | `batch_size=16` | 132.970 | 122.477 | Kept |
+| **5** | Tuning: Hidden Size | `hidden_size=400` | 125.861 | 117.881 | Kept |
+| **6** | Tuning: Learning Rate | `lr=0.001` (retained from baseline) | 125.861 | 117.881 | Kept |
+| **7** | Tuning: Embedding Size | `emb_size=400` | 125.286 | 116.656 | Kept |
+| **8** | **Final Model** | `clip=0.1` | **123.429** | **115.732** | **FINAL** |
 
-### **Reproducing the Models**
+---
 
-You can skip training and directly evaluate the performance of any checkpointed model from the table above using the following specific commands:
+## Reproducing Results
 
-**Baseline RNN (Exp 0):**
+Use `--eval_only` to evaluate any saved checkpoint without retraining:
 
-python main.py \--eval\_only \--model\_path "bin/Baseline\_RNN/Baseline\_RNN.pt"
+**Baseline RNN (Exp 0)**
+```bash
+python main.py --eval_only --model_path "bin/Baseline_RNN/Baseline_RNN.pt"
+```
 
-**LSTM Architecture (Exp 1):**
+**Baseline LSTM (Exp 1)**
+```bash
+python main.py --eval_only --model_path "bin/Baseline_LSTM/Baseline_LSTM.pt"
+```
 
-python main.py \--eval\_only \--model\_path "bin/Baseline\_LSTM/Baseline\_LSTM.pt"
+**LSTM + Dropout (Exp 2)**
+```bash
+python main.py --eval_only --model_path "bin/LSTM_with_Dropout/LSTM_with_Dropout.pt"
+```
 
-**LSTM \+ Dropout (Exp 2):**
+**LSTM + Dropout + AdamW (Exp 3)**
+```bash
+python main.py --eval_only --model_path "bin/LSTM_Dropout_AdamW/LSTM_Dropout_AdamW.pt"
+```
 
-python main.py \--eval\_only \--model\_path "bin/LSTM\_with\_Dropout/LSTM\_with\_Dropout.pt"
+**Final Optimized Model (Exp 8)**
+```bash
+python main.py --eval_only --model_path "bin/LSTM_Dropout_AdamW_Final/LSTM_Dropout_AdamW_Final.pt"
+```
 
-**LSTM \+ Dropout \+ AdamW (Exp 3):**
+---
 
-python main.py \--eval\_only \--model\_path "bin/LSTM\_Dropout\_AdamW/LSTM\_Dropout\_AdamW.pt"
+## Experimental Discussion
 
-**Final Optimized Model (Exp 8):**
+**Architectural Improvements:** Replacing the vanilla RNN with an LSTM delivered the most immediate structural gain — Test PPL dropped from ~161 to ~149 — due to the LSTM's gating mechanism mitigating the vanishing gradient problem. Adding dropout layers provided a modest but consistent regularization benefit.
 
-python main.py \--eval\_only \--model\_path "bin/LSTM\_Dropout\_AdamW\_Final/LSTM\_Dropout\_AdamW\_Final.pt"
+**Optimizer Impact:** The single largest performance jump came from switching SGD to AdamW. Test PPL fell by ~24 points (146.9 → 122.8), confirming that adaptive learning rate optimization with decoupled weight decay is far better suited to this loss landscape.
 
-### **Experimental Observations & Discussion**
+**Sequential Grid Search:** After the architecture was finalized, a sequential grid search systematically reduced perplexity further:
+- Increasing `hidden_size` and `emb_size` to 400 improved the model's capacity to capture long-range semantic relationships, reducing Test PPL by ~6 points.
+- Tightening gradient clipping to `clip=0.1` stabilized AdamW's parameter updates in the final tuning stage.
 
-**Architectural Improvements:** The transition from a vanilla RNN to an LSTM immediately granted a massive performance boost (Test PPL dropped from \~161 to \~149), successfully mitigating the vanishing gradient problem inherent in standard RNNs. Adding dropout provided a minor but welcome regularization boost, ensuring the model generalizes better over the PTB corpus.
-
-**Optimizer Impact:** The most significant single leap in performance came from switching the optimizer from standard SGD to AdamW. Test PPL plummeted by an impressive 24 points (146.9 → 122.8), proving that adaptive learning rate optimization with decoupled weight decay is far more effective for navigating this loss landscape.
-
-**Hyperparameter Optimization (Sequential Grid Search):** Following the architectural lockdown, a sequential grid search systematically minimized the perplexity further:
-
-* Increasing the network's capacity (hidden\_size to 400 and emb\_size to 400\) allowed the LSTM to capture much deeper semantic relationships in the text, shedding an additional 6 points of Test PPL.  
-* Lowering the gradient clipping threshold (clip \= 0.1) ultimately stabilized the final parameter updates alongside AdamW, arriving at the absolute best performance.
-
-**Target Achievement:** The final optimized configuration (LSTM\_Dropout\_AdamW\_Final) achieved a **Test Perplexity of 115.732**. This dramatically exceeds the mandatory project requirement of achieving, firmly demonstrating a highly performant and stable language model.
+**Final Result:** The optimized configuration (`LSTM_Dropout_AdamW_Final`) achieves a **Test Perplexity of 115.732**, well below the mandatory threshold of 250.

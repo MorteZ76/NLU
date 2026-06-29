@@ -1,4 +1,3 @@
-# Add functions or classes used for data loading and preprocessing
 import os
 import urllib.request
 import torch
