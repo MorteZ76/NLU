@@ -1,0 +1,32 @@
+============================================================
+EXPERIMENT RESULTS — ATIS_JointBERT_Baseline
+Saved: 2026-06-29 07:49:06
+============================================================
+
+HYPERPARAMETERS
+------------------------------------------------------------
+  model_type          : JointBERT
+  bert_model          : bert-base-uncased
+  optimizer           : AdamW
+  lr                  : 3e-05
+  dropout_rate        : 0.1
+  clip                : 1.0
+  n_epochs            : 10
+  patience            : 3
+  batch_size          : 32
+  weight_decay        : 0.01
+
+FINAL SCORES
+------------------------------------------------------------
+  Best Dev Slot F1          : 0.9811
+  Best Dev Intent Acc       : 0.9960
+  Test Slot F1              : 0.9539
+  Test Intent Accuracy      : 0.9731
+  Stopped at Epoch          : 10
+
+FILES
+------------------------------------------------------------
+  Checkpoint : bin/ATIS_JointBERT_Baseline/ATIS_JointBERT_Baseline.pt
+  Config     : bin/ATIS_JointBERT_Baseline/config.json
+  Loss plot  : bin/ATIS_JointBERT_Baseline/loss_plot.png
+  This file  : bin/ATIS_JointBERT_Baseline/results_summary.txt
