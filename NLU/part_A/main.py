@@ -16,13 +16,14 @@ from model import ModelIAS
 from functions import set_seed, init_weights, train_loop, eval_loop, save_experiment, sequential_grid_search, append_final_scores_to_summary
 
 def main():
+    # Anchor all relative paths (bin/, dataset/, config.json) to the script's own directory,
+    # so the script runs correctly regardless of the working directory it is launched from.
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
     # 0. Load configuration
     config_path = os.path.join(os.path.dirname(__file__), "config.json")
     with open(config_path, 'r') as f:
         config = json.load(f)
-
-    print(f"[Config] Loaded configuration from {config_path}")
-    print(f"[Config] Experiment: {config['experiment_name']} | Model: {config['model_type']} | Optimizer: {config['optimizer']}")
 
     # 1. Command-Line Argument Interface Setup
     parser = argparse.ArgumentParser(description="Joint Intent Classification and Slot Filling Model.")
@@ -30,6 +31,23 @@ def main():
     parser.add_argument("--model_path", type=str, default=f"bin/{config['experiment_name']}/{config['experiment_name']}.pt")
     parser.add_argument("--tune", action="store_true", help="Run hyperparameter grid search.")
     args = parser.parse_args()
+
+    # Normalize path separators so Windows-style backslash paths work on Linux (e.g. Colab).
+    args.model_path = args.model_path.replace("\\", "/")
+
+    # If running in evaluation mode, load the config saved alongside the checkpoint so that
+    # the model is reconstructed with the exact architecture it was trained with.
+    if args.eval_only:
+        checkpoint_dir = os.path.dirname(args.model_path)
+        checkpoint_config_path = os.path.join(checkpoint_dir, "config.json")
+        if os.path.exists(checkpoint_config_path):
+            with open(checkpoint_config_path, 'r') as f:
+                config.update(json.load(f))
+            print(f"[Config] Loaded evaluation configuration from {checkpoint_config_path}")
+        else:
+            print(f"[Warning] No checkpoint config found at {checkpoint_config_path}. Falling back to root config.")
+
+    print(f"[Config] Experiment: {config['experiment_name']} | Model: {config.get('model_type', 'N/A')} | Optimizer: {config.get('optimizer', 'N/A')}")
 
     # 2. Seeding & Hardware Configuration
     set_seed(1234)
@@ -83,7 +101,7 @@ def main():
         }
         
         model = ModelIAS(**model_kwargs).to(device)
-        model.load_state_dict(torch.load(args.model_path, map_location=device))
+        model.load_state_dict(torch.load(args.model_path, map_location=device, weights_only=True))
         
         results_dev, intent_dev, _ = eval_loop(dev_loader, criterion_slots, criterion_intents, model, lang)
         results_test, intent_test, _ = eval_loop(test_loader, criterion_slots, criterion_intents, model, lang)
@@ -149,8 +167,8 @@ def main():
                            model_local, trial_cfg.get('clip', clip))
                 
                 if epoch_local % 5 == 0:
-                    res_dev, intent_res, _ = eval_loop(dev_loader, criterion_slots, criterion_intents,
-                                                       model_local, lang)
+                    res_dev, _, _ = eval_loop(dev_loader, criterion_slots, criterion_intents,
+                                              model_local, lang)
                     f1_dev = res_dev['total']['f']
                     
                     if f1_dev > best_f1_local:
@@ -232,7 +250,7 @@ def main():
         train_mean_loss = np.asarray(loss).mean() if loss else 0.0
         losses_train.append(train_mean_loss)
         
-        # Notebook specifies: check the performance every 5 epochs
+        # Evaluate dev every 5 epochs to reduce overhead during the long training run
         if epoch % 5 == 0:
             results_dev, intent_res, loss_dev = eval_loop(dev_loader, criterion_slots, criterion_intents, model, lang)
             dev_mean_loss = np.asarray(loss_dev).mean() if loss_dev else 0.0

@@ -31,11 +31,20 @@ def download_atis_and_conll(dest_dir="dataset/ATIS"):
         urllib.request.urlretrieve("https://raw.githubusercontent.com/BrownFortress/NLU-2024-Labs/main/labs/conll.py", "conll.py")
 
 def load_data(path):
+    """Load a JSON dataset file and return it as a Python object."""
     with open(path) as f:
         dataset = json.loads(f.read())
     return dataset
 
 class Lang():
+    """
+    Vocabulary container for the ATIS NLU task.
+
+    Builds and holds three bidirectional mappings:
+      - word  <-> id  (with unknown token and optional frequency cutoff)
+      - slot  <-> id  (with pad token at index 0)
+      - intent <-> id (no pad token)
+    """
     def __init__(self, words, intents, slots, cutoff=0):
         self.word2id = self.w2id(words, cutoff=cutoff, unk=True)
         self.slot2id = self.lab2id(slots)
@@ -45,6 +54,17 @@ class Lang():
         self.id2intent = {v:k for k, v in self.intent2id.items()}
         
     def w2id(self, elements, cutoff=None, unk=True):
+        """
+        Build a word-to-id mapping, filtering tokens that appear <= cutoff times.
+
+        Args:
+            elements (list[str]): Flat list of all word tokens in the corpus.
+            cutoff (int): Minimum frequency required for a word to enter the vocab.
+            unk (bool): Reserve an 'unk' token for out-of-vocabulary words.
+
+        Returns:
+            dict: Mapping from token string to integer id.
+        """
         vocab = {'pad': PAD_TOKEN}
         if unk:
             vocab['unk'] = len(vocab)
@@ -53,8 +73,18 @@ class Lang():
             if v > cutoff:
                 vocab[k] = len(vocab)
         return vocab
-    
+
     def lab2id(self, elements, pad=True):
+        """
+        Build a label-to-id mapping (intents or slots).
+
+        Args:
+            elements (iterable): Unique label strings.
+            pad (bool): If True, reserve index 0 for a pad label (used for slots, not intents).
+
+        Returns:
+            dict: Mapping from label string to integer id.
+        """
         vocab = {}
         if pad:
             vocab['pad'] = PAD_TOKEN
@@ -63,6 +93,14 @@ class Lang():
         return vocab
 
 class IntentsAndSlots(data.Dataset):
+    """
+    PyTorch Dataset for the ATIS joint intent classification and slot filling task.
+
+    Each item is a dict with:
+        'utterance' : LongTensor of word ids, shape [SeqLen]
+        'slots'     : LongTensor of slot ids, shape [SeqLen]
+        'intent'    : int intent id
+    """
     def __init__(self, dataset, lang, unk='unk'):
         self.utterances = []
         self.intents = []
@@ -89,9 +127,15 @@ class IntentsAndSlots(data.Dataset):
         return sample
     
     def mapping_lab(self, data, mapper):
+        """Map a flat list of label strings to integer ids (used for intents)."""
         return [mapper[x] if x in mapper else mapper[self.unk] for x in data]
-    
+
     def mapping_seq(self, data, mapper):
+        """
+        Map a list of whitespace-delimited sequences to lists of integer ids.
+
+        Unknown tokens fall back to the 'unk' id.
+        """
         res = []
         for seq in data:
             tmp_seq = []
@@ -104,18 +148,23 @@ class IntentsAndSlots(data.Dataset):
         return res
 
 def collate_fn_atis(data, device):
+    """
+    Collate a batch of samples into padded tensors for the ATIS dataset.
+
+    Sorts by descending sequence length so pack_padded_sequence works without explicit sorting.
+
+    Returns:
+        dict with keys 'utterances', 'intents', 'y_slots', 'slots_len'.
+    """
     def merge(sequences):
+        """Pad a list of variable-length tensors to the same length."""
         lengths = [len(seq) for seq in sequences]
-        max_len = 1 if max(lengths)==0 else max(lengths)
-        # Pad token is zero
-        padded_seqs = torch.LongTensor(len(sequences),max_len).fill_(PAD_TOKEN)
+        max_len = 1 if max(lengths) == 0 else max(lengths)
+        padded_seqs = torch.LongTensor(len(sequences), max_len).fill_(PAD_TOKEN)
         for i, seq in enumerate(sequences):
-            end = lengths[i]
-            padded_seqs[i, :end] = seq
-        padded_seqs = padded_seqs.detach()
-        return padded_seqs, lengths
-        
-    # Sort data by seq lengths
+            padded_seqs[i, :lengths[i]] = seq
+        return padded_seqs.detach(), lengths
+
     data.sort(key=lambda x: len(x['utterance']), reverse=True) 
     new_item = {}
     for key in data[0].keys():
@@ -160,9 +209,9 @@ def prepare_atis_data():
         else:
             mini_train.append(tmp_train_raw[id_y])
             
-    # Random Stratify
-    X_train, X_dev, y_train, y_dev = train_test_split(inputs, labels, test_size=portion, 
-                                                        random_state=42, 
+    # Stratified split so every intent class is proportionally represented in both train and dev
+    X_train, X_dev, y_train, y_dev = train_test_split(inputs, labels, test_size=portion,
+                                                        random_state=42,
                                                         shuffle=True,
                                                         stratify=labels)
     X_train.extend(mini_train)

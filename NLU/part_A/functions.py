@@ -19,6 +19,7 @@ except ImportError:
     pass
 
 def set_seed(seed=1234):
+    """Set all random seeds for reproducible training across Python, NumPy, and PyTorch."""
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -30,6 +31,12 @@ def set_seed(seed=1234):
     print(f"[Init] Reproducibility seed successfully configured to: {seed}")
 
 def init_weights(mat):
+    """
+    Apply Xavier/orthogonal initialization to RNN weights and uniform initialization to linear layers.
+
+    Xavier init for input-hidden weights and orthogonal init for hidden-hidden weights are known to
+    improve gradient flow in recurrent networks and reduce sensitivity to depth.
+    """
     for m in mat.modules():
         if type(m) in [nn.GRU, nn.LSTM, nn.RNN]:
             for name, param in m.named_parameters():
@@ -50,35 +57,66 @@ def init_weights(mat):
                     m.bias.data.fill_(0.01)
 
 def train_loop(data, optimizer, criterion_slots, criterion_intents, model, clip=5):
+    """
+    Run one epoch of training over the dataloader.
+
+    Args:
+        data: DataLoader yielding batched ATIS samples.
+        optimizer: PyTorch optimizer.
+        criterion_slots: Loss function for slot filling (CrossEntropyLoss ignoring pad).
+        criterion_intents: Loss function for intent classification.
+        model: The ModelIAS instance.
+        clip (float): Maximum gradient norm for clipping.
+
+    Returns:
+        list[float]: Per-batch combined loss values.
+    """
     model.train()
     loss_array = []
     for sample in data:
-        optimizer.zero_grad() # Zeroing the gradient
+        optimizer.zero_grad()
         slots, intent = model(sample['utterances'], sample['slots_len'])
-        
+
         loss_intent = criterion_intents(intent, sample['intents'])
         loss_slot = criterion_slots(slots, sample['y_slots'])
-        loss = loss_intent + loss_slot # In joint training we sum the losses.
-        
+        # Sum both task losses for joint optimization
+        loss = loss_intent + loss_slot
+
         loss_array.append(loss.item())
-        loss.backward() # Compute the gradient, deleting the computational graph
-        
-        # clip the gradient to avoid exploding gradients
-        torch.nn.utils.clip_grad_norm_(model.parameters(), clip)  
-        optimizer.step() # Update the weights
+        loss.backward()
+
+        # Clip gradients to prevent exploding gradient instability
+        torch.nn.utils.clip_grad_norm_(model.parameters(), clip)
+        optimizer.step()
     return loss_array
 
 def eval_loop(data, criterion_slots, criterion_intents, model, lang):
+    """
+    Evaluate the model over the dataloader and return slot F1, intent accuracy, and losses.
+
+    Args:
+        data: DataLoader yielding batched ATIS samples.
+        criterion_slots: Loss function for slot filling.
+        criterion_intents: Loss function for intent classification.
+        model: The ModelIAS instance.
+        lang: Lang vocabulary object (provides id2slot, id2intent, id2word mappings).
+
+    Returns:
+        tuple:
+            results (dict): CoNLL slot evaluation results (includes 'total' -> 'f' for F1).
+            report_intent (dict): sklearn classification_report dict for intents.
+            loss_array (list[float]): Per-batch combined loss values.
+    """
     model.eval()
     loss_array = []
-    
+
     ref_intents = []
     hyp_intents = []
-    
+
     ref_slots = []
     hyp_slots = []
 
-    with torch.no_grad(): # It used to avoid the creation of computational graph
+    with torch.no_grad():  # Disable gradient computation for inference
         for sample in data:
             slots, intents = model(sample['utterances'], sample['slots_len'])
             
@@ -100,7 +138,6 @@ def eval_loop(data, criterion_slots, criterion_intents, model, lang):
                 # Safe fallback supporting both "utterance" and "utterances" key mappings
                 utt_key = 'utterances' if 'utterances' in sample else 'utterance'
                 utt_ids = sample[utt_key][id_seq][:length].tolist()
-                # utt_ids = sample['utterances'][id_seq][:length].tolist()
                 gt_ids = sample['y_slots'][id_seq].tolist()
                 
                 gt_slots = [lang.id2slot[elem] for elem in gt_ids[:length]]
@@ -209,7 +246,22 @@ def grid_search(param_name: str,
                 run_fn: Callable[[Dict[str, Any]], Tuple[float, Dict[str, Any]]],
                 results_dir: str = "bin/grid_search") -> Dict[str, Any]:
     """
-    Modified to MAXIMIZE the metric (F1 score).
+    Search a single parameter over a list of candidate values, keeping the best by metric.
+
+    Args:
+        param_name (str): Config key to vary (e.g. 'lr', 'hidden_size').
+        param_values (list): Values to try for this parameter.
+        base_config (dict): Starting configuration; a deep copy is made for each trial.
+        run_fn (callable): Function that accepts a trial config dict and returns
+                           (metric: float, extras: dict). Return metric=-1.0 to signal failure.
+        results_dir (str): Directory where trial_results.txt is written.
+
+    Returns:
+        dict with keys:
+            'best_config'  — {param_name: best_value}
+            'best_metric'  — highest metric across all successful trials
+            'best_extras'  — extras dict from the best trial
+            'results'      — all trial results sorted by metric descending
     """
     os.makedirs(results_dir, exist_ok=True)
     total_trials = len(param_values)
@@ -222,7 +274,6 @@ def grid_search(param_name: str,
             trial_cfg["experiment_name"] = f"grid_{param_name}={param_val}"
             
             try:
-                # metric is F1
                 metric, extras = run_fn(trial_cfg)
                 status = "✓ PASS" if metric != -1.0 else "✗ FAIL"
             except Exception as e:
