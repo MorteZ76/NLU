@@ -491,9 +491,19 @@ def _generate_sequential_summary(parent_dir: str,
     
 def check_nt_asgd_trigger(val_losses, non_mono=3):
     """
-    Checks the non-monotonic trigger condition for switching to ASGD.
-    Triggered when validation loss fails to improve for 'non_mono' epochs.
-    Specifically: if current epoch > non_mono and current loss > min(val_losses[:-non_mono])
+    Checks the non-monotonic trigger condition for switching from SGD to ASGD.
+
+    Trigger condition: current validation loss is worse than the minimum loss
+    recorded over all epochs except the last `non_mono` epochs. This detects
+    a plateau and signals that averaging (ASGD) will be more beneficial than
+    continued SGD updates.
+
+    Args:
+        val_losses (list of float): Validation losses recorded per epoch so far.
+        non_mono (int): Number of recent epochs excluded from the minimum comparison.
+
+    Returns:
+        bool: True if the NT-ASGD trigger condition is met, False otherwise.
     """
     if len(val_losses) > non_mono:
         if val_losses[-1] > min(val_losses[:-non_mono]):
@@ -502,8 +512,18 @@ def check_nt_asgd_trigger(val_losses, non_mono=3):
 
 def swap_asgd_weights(model, optimizer):
     """
-    Temporarily substitutes model weights with ASGD's averaged weights ('ax').
-    Returns a dictionary containing the original weights for restoration.
+    Temporarily replaces model parameters with ASGD's accumulated averaged weights ('ax').
+
+    Used during validation when ASGD is active, so that evaluation reflects the
+    averaged parameters rather than the current noisy SGD iterate.
+
+    Args:
+        model (nn.Module): The model whose parameters will be temporarily swapped.
+        optimizer (optim.ASGD): The active ASGD optimizer holding averaged weights.
+
+    Returns:
+        dict: Mapping from each parameter tensor to its original (pre-swap) data,
+              used to restore weights after evaluation via restore_asgd_weights().
     """
     backup = {}
     for prm in model.parameters():
@@ -514,7 +534,11 @@ def swap_asgd_weights(model, optimizer):
 
 def restore_asgd_weights(model, backup):
     """
-    Restores model weights from a previously saved backup dictionary.
+    Restores model parameters to their pre-swap values after ASGD evaluation.
+
+    Args:
+        model (nn.Module): The model whose parameters will be restored.
+        backup (dict): Parameter-to-data mapping returned by swap_asgd_weights().
     """
     for prm, backup_weight in backup.items():
         prm.data = backup_weight.clone()

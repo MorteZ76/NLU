@@ -209,7 +209,8 @@ def main():
         param_tuning_order = [
             {
                 "name": "non_mono",
-                # 1 was the best so we moved from 3 to 1
+                # Tuned result: non_mono=1 achieved the lowest PPL.
+                # NT-ASGD trigger window narrowed from default 3 to 1.
                 "values": tuning_grid.get("non_mono", [1, 2, 3, 4, 5])
             },
         ]
