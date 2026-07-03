@@ -216,3 +216,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Model checkpoints — too large for git, stored on Google Drive instead
+# (Colab mounts Drive and rsyncs bin/ to/from it; see Colab notebook)
+*.pt
