@@ -1,20 +1,13 @@
 {
-  "experiment_name": "ATIS_Joint_Model_Bidirectional_Drpout_Final",
-  "model_type": "ModelIAS",
-  "optimizer": "Adam",
-  "emb_size": 400,
-  "hidden_size": 250,
-  "lr": 0.001,
-  "dropout_rate": 0.4,
-  "patience": 3,
-  "batch_size": 128,
-  "clip": 5,
-  "n_epochs": 200,
-  "tuning_grid": {
-    "lr":           [0.0005, 0.001, 0.005],
-    "hidden_size":  [150, 200, 250],
-    "dropout_rate": [0.25, 0.3, 0.35, 0.4],
-    "emb_size":     [250, 300, 350, 400],
-    "clip":         [3, 5, 7]
-  }
+    "experiment_name": "ATIS_Joint_Model_Baseline",
+    "model_type": "ModelIAS",
+    "bidirectional": false,
+    "optimizer": "Adam",
+    "emb_size": 300,
+    "hidden_size": 200,
+    "lr": 0.0001,
+    "patience": 3,
+    "batch_size": 64,
+    "clip": 5,
+    "n_epochs": 200,
 }
