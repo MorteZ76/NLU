@@ -1,6 +1,6 @@
 ============================================================
 EXPERIMENT RESULTS — ATIS_Joint_Model_Baseline
-Saved: 2026-06-28 14:21:49
+Saved: 2026-07-04 10:06:05
 ============================================================
 
 HYPERPARAMETERS
@@ -17,11 +17,11 @@ HYPERPARAMETERS
 
 FINAL SCORES
 ------------------------------------------------------------
-  Best Dev Slot F1          : 0.9603
-  Test Slot F1              : 0.9233
-  Test Intent Accuracy      : 0.9384
-  Dev Intent Accuracy       : 0.9779
-  Stopped at Epoch          : 160
+  Best Dev Slot F1          : 0.9529
+  Test Slot F1              : 0.9004
+  Test Intent Accuracy      : 0.9328
+  Dev Intent Accuracy       : 0.9819
+  Stopped at Epoch          : 115
 
 FILES
 ------------------------------------------------------------
