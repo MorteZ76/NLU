@@ -169,10 +169,12 @@ def main():
 
         results_dev,  intent_dev,  _ = eval_loop(dev_loader,  criterion_slots, criterion_intents, model, lang)
         results_test, intent_test, _ = eval_loop(test_loader, criterion_slots, criterion_intents, model, lang)
+        dev_avg = (results_dev['total']['f'] + intent_dev['accuracy']) / 2.0
+        test_avg = (results_test['total']['f'] + intent_test['accuracy']) / 2.0
 
         print(f"\n{'='*52}")
-        print(f"Dev  — Slot F1: {results_dev['total']['f']:.4f}  | Intent Acc: {intent_dev['accuracy']:.4f}")
-        print(f"Test — Slot F1: {results_test['total']['f']:.4f}  | Intent Acc: {intent_test['accuracy']:.4f}")
+        print(f"Dev  — Slot F1: {results_dev['total']['f']:.4f}  | Intent Acc: {intent_dev['accuracy']:.4f}  | Average: {dev_avg:.4f}")
+        print(f"Test — Slot F1: {results_test['total']['f']:.4f}  | Intent Acc: {intent_test['accuracy']:.4f}  | Average: {test_avg:.4f}")
         print(f"{'='*52}")
         return
 
