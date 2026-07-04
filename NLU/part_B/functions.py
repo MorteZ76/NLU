@@ -179,6 +179,7 @@ def save_experiment(model, hyperparameters, train_losses, dev_losses,
                 "dev_intent_acc":   "Best Dev Intent Acc",
                 "test_slot_f1":     "Test Slot F1",
                 "test_intent_acc":  "Test Intent Accuracy",
+                "avg_metric":       "Average (Slot F1 + Intent Acc) / 2",
                 "stopped_at_epoch": "Stopped at Epoch",
             }
             for key, label in labels.items():
@@ -317,6 +318,7 @@ def append_final_scores_to_summary(results_dir: str, final_model_scores: Dict[st
         labels = {
             "test_slot_f1":    "Test Slot F1",
             "test_intent_acc": "Test Intent Accuracy",
+            "avg_metric":      "Average (Slot F1 + Intent Acc) / 2",
         }
         for key, label in labels.items():
             if key in final_model_scores:

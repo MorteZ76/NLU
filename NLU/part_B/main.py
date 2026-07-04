@@ -242,6 +242,15 @@ def main():
             if result['best_metric'] != -1.0:
                 final_scores['test_slot_f1']    = result['best_metric']
                 final_scores['test_intent_acc'] = result['best_extras'].get('intent_acc', 0)
+        if 'test_slot_f1' in final_scores and 'test_intent_acc' in final_scores:
+            final_scores['avg_metric'] = (final_scores['test_slot_f1'] + final_scores['test_intent_acc']) / 2.0
+
+        print(f"{'='*52}")
+        print(f"Test Slot F1:     {final_scores.get('test_slot_f1', float('nan')):.4f}")
+        print(f"Test Intent Acc:  {final_scores.get('test_intent_acc', float('nan')):.4f}")
+        print(f"Average (F1+Acc): {final_scores.get('avg_metric', float('nan')):.4f}")
+        print(f"{'='*52}")
+
         append_final_scores_to_summary(search_results['results_dir'], final_scores)
         return
 
@@ -267,9 +276,11 @@ def main():
         test_loader, criterion_slots, criterion_intents, model, lang
     )
 
+    avg_metric = (results_test['total']['f'] + intent_test['accuracy']) / 2.0
     print(f"\n{'='*52}")
     print(f"Best Dev — Slot F1: {best_dev_f1:.4f} | Intent Acc: {best_dev_acc:.4f}")
     print(f"Test     — Slot F1: {results_test['total']['f']:.4f} | Intent Acc: {intent_test['accuracy']:.4f}")
+    print(f"Average (F1+Acc)  : {avg_metric:.4f}")
     print(f"{'='*52}")
 
     final_scores = {
@@ -277,6 +288,7 @@ def main():
         "dev_intent_acc":   best_dev_acc,
         "test_slot_f1":     results_test['total']['f'],
         "test_intent_acc":  intent_test['accuracy'],
+        "avg_metric":       avg_metric,
         "stopped_at_epoch": stopped_epoch,
     }
     config.update({k: v for k, v in final_scores.items()})

@@ -225,6 +225,7 @@ def save_experiment(model, hyperparameters, train_losses, dev_metrics, name="bas
                 "test_slot_f1":      "Test Slot F1",
                 "test_intent_acc":   "Test Intent Accuracy",
                 "dev_intent_acc":    "Dev Intent Accuracy",
+                "avg_metric":        "Average (Slot F1 + Intent Acc) / 2",
                 "stopped_at_epoch":  "Stopped at Epoch",
             }
             for key, label in score_labels.items():

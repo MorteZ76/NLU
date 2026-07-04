@@ -223,6 +223,12 @@ def main():
         if 'slot_f1' in best_extras and 'intent_acc' in best_extras:
             final_model_scores['avg_metric'] = (best_extras['slot_f1'] + best_extras['intent_acc']) / 2.0
 
+        print(f"{'='*48}")
+        print(f"Test Slot F1:     {final_model_scores.get('slot_f1', float('nan')):.4f}")
+        print(f"Test Intent Acc:  {final_model_scores.get('intent_acc', float('nan')):.4f}")
+        print(f"Average (F1+Acc): {final_model_scores.get('avg_metric', float('nan')):.4f}")
+        print(f"{'='*48}")
+
         append_final_scores_to_summary(search_results['results_dir'], final_model_scores)
         return
 
@@ -281,22 +287,26 @@ def main():
     if best_model_state: best_model.load_state_dict(best_model_state)
 
     results_test, intent_test, _ = eval_loop(test_loader, criterion_slots, criterion_intents, best_model, lang)
+    avg_metric = (results_test['total']['f'] + intent_test['accuracy']) / 2.0
     print(f"\n{'='*48}")
     print(f"Optimal Configuration Model Evaluation complete!")
     print(f"Best Dev F1 Achieved: {best_f1:.4f}")
     print(f"Slot F1 (Test):       {results_test['total']['f']:.4f}")
     print(f"Intent Accuracy:      {intent_test['accuracy']:.4f}")
+    print(f"Average (F1+Acc):     {avg_metric:.4f}")
     print(f"{'='*48}")
 
     config['best_dev_f1'] = best_f1
     config['final_test_f1'] = results_test['total']['f']
     config['final_intent_acc'] = intent_test['accuracy']
+    config['avg_metric'] = avg_metric
 
     final_scores = {
         "best_dev_f1":     best_f1,
         "dev_intent_acc":  best_dev_intent_acc if 'best_dev_intent_acc' in dir() else None,
         "test_slot_f1":    results_test['total']['f'],
         "test_intent_acc": intent_test['accuracy'],
+        "avg_metric":      avg_metric,
         "stopped_at_epoch": stopped_at_epoch,
     }
     # Remove None entries
