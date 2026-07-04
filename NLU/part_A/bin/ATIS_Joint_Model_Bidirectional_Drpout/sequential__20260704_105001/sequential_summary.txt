@@ -1,0 +1,101 @@
+================================================================================
+SEQUENTIAL GRID SEARCH SUMMARY
+Saved: 2026-07-04 11:31:10
+================================================================================
+
+FINAL BEST CONFIGURATION
+--------------------------------------------------------------------------------
+  experiment_name: ATIS_Joint_Model_Bidirectional_Drpout
+  model_type: ModelIAS
+  bidirectional: True
+  optimizer: Adam
+  emb_size: 300
+  hidden_size: 200
+  lr: 0.0001
+  dropout_rate: 0.1
+  patience: 3
+  batch_size: 32
+  clip: 5
+  n_epochs: 200
+  tuning_grid: {'lr': [0.0001, 0.001, 0.01], 'hidden_size': [100, 200, 300], 'dropout_rate': [0.0, 0.1, 0.3, 0.5], 'emb_size': [100, 200, 300], 'batch_size': [32, 64, 128], 'clip': [1, 5, 10]}
+
+
+SEARCH PROGRESSION
+--------------------------------------------------------------------------------
+
+Step 1: lr
+  Best Value  : 0.0001
+  Best Slot F1: 0.947941
+  Best Intent Acc: 0.951848
+
+  Trial   Value              Slot F1   Intent Acc   Avg (rank)  Status
+  ----------------------------------------------------------------------
+  1       0.0001              0.9440       0.9518       0.9479  ✓ PASS
+  2       0.001               0.9395       0.9563       0.9479  ✓ PASS
+  3       0.01                0.9423       0.9384       0.9404  ✓ PASS
+
+Step 2: hidden_size
+  Best Value  : 200
+  Best Slot F1: 0.947941
+  Best Intent Acc: 0.951848
+
+  Trial   Value              Slot F1   Intent Acc   Avg (rank)  Status
+  ----------------------------------------------------------------------
+  1       100                 0.9412       0.9507       0.9460  ✓ PASS
+  2       200                 0.9440       0.9518       0.9479  ✓ PASS
+  3       300                 0.9390       0.9496       0.9443  ✓ PASS
+
+Step 3: dropout_rate
+  Best Value  : 0.1
+  Best Slot F1: 0.947941
+  Best Intent Acc: 0.951848
+
+  Trial   Value              Slot F1   Intent Acc   Avg (rank)  Status
+  ----------------------------------------------------------------------
+  1       0.0                 0.9375       0.9362       0.9369  ✓ PASS
+  2       0.1                 0.9440       0.9518       0.9479  ✓ PASS
+  3       0.3                 0.9408       0.9518       0.9463  ✓ PASS
+  4       0.5                 0.9358       0.9530       0.9444  ✓ PASS
+
+Step 4: emb_size
+  Best Value  : 300
+  Best Slot F1: 0.947941
+  Best Intent Acc: 0.951848
+
+  Trial   Value              Slot F1   Intent Acc   Avg (rank)  Status
+  ----------------------------------------------------------------------
+  1       100                 0.9338       0.9429       0.9383  ✓ PASS
+  2       200                 0.9369       0.9373       0.9371  ✓ PASS
+  3       300                 0.9440       0.9518       0.9479  ✓ PASS
+
+Step 5: batch_size
+  Best Value  : 32
+  Best Slot F1: 0.947941
+  Best Intent Acc: 0.951848
+
+  Trial   Value              Slot F1   Intent Acc   Avg (rank)  Status
+  ----------------------------------------------------------------------
+  1       32                  0.9440       0.9518       0.9479  ✓ PASS
+  2       64                  0.9440       0.9518       0.9479  ✓ PASS
+  3       128                 0.9440       0.9518       0.9479  ✓ PASS
+
+Step 6: clip
+  Best Value  : 5
+  Best Slot F1: 0.947941
+  Best Intent Acc: 0.951848
+
+  Trial   Value              Slot F1   Intent Acc   Avg (rank)  Status
+  ----------------------------------------------------------------------
+  1       1                   0.9394       0.9518       0.9456  ✓ PASS
+  2       5                   0.9440       0.9518       0.9479  ✓ PASS
+  3       10                  0.9429       0.9485       0.9457  ✓ PASS
+
+
+================================================================================
+BEST MODEL — FINAL EVALUATION
+Evaluated: 2026-07-04 11:31:10
+--------------------------------------------------------------------------------
+  Avg (Slot F1 + Intent Acc) / 2: 0.9479
+  Test Slot F1              : 0.9440
+  Test Intent Accuracy      : 0.9518
+  Best Dev Slot F1 (during tune): 0.9793
