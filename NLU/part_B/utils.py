@@ -191,13 +191,10 @@ def prepare_bert_data(bert_model_name='bert-base-uncased'):
     X_train.extend(mini_train)
     train_raw, dev_raw = X_train, X_dev
 
-    # Build label vocab from the full corpus so test labels are never unknown.
-    # sorted(), not raw set() iteration: Python randomizes string hash seeds per
-    # process, so an unsorted set would assign a different label<->id mapping on
-    # every run, silently corrupting any checkpoint reloaded in a later process.
+    # Build label vocab from the full corpus so test labels are never unknown
     corpus  = train_raw + dev_raw + test_raw
-    slots   = sorted(set(sum([line['slots'].split()  for line in corpus], [])))
-    intents = sorted(set(line['intent'] for line in corpus))
+    slots   = set(sum([line['slots'].split()  for line in corpus], []))
+    intents = set(line['intent'] for line in corpus)
     lang    = Lang(intents, slots)
 
     tokenizer     = BertTokenizerFast.from_pretrained(bert_model_name)
