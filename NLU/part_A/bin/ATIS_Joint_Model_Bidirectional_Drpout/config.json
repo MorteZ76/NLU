@@ -3,45 +3,49 @@
     "model_type": "ModelIAS",
     "bidirectional": true,
     "optimizer": "Adam",
-    "emb_size": 400,
-    "hidden_size": 250,
-    "lr": 0.001,
-    "dropout_rate": 0.4,
+    "emb_size": 300,
+    "hidden_size": 200,
+    "lr": 0.0001,
+    "dropout_rate": 0.1,
     "patience": 3,
-    "batch_size": 128,
+    "batch_size": 64,
     "clip": 5,
     "n_epochs": 200,
     "tuning_grid": {
         "lr": [
-            0.0005,
+            0.0001,
             0.001,
-            0.005
+            0.01
         ],
         "hidden_size": [
-            150,
+            100,
             200,
-            250
+            300
         ],
         "dropout_rate": [
-            0.25,
+            0.0,
+            0.1,
             0.3,
-            0.35,
-            0.4
+            0.5
         ],
         "emb_size": [
-            250,
-            300,
-            350,
-            400
+            100,
+            200,
+            300
+        ],
+        "batch_size": [
+            32,
+            64,
+            128
         ],
         "clip": [
-            3,
+            1,
             5,
-            7
+            10
         ]
     },
-    "best_dev_f1": 0.9793144208037825,
-    "final_test_f1": 0.9469589816124471,
-    "final_intent_acc": 0.9608062709966405,
-    "avg_metric": 0.9538826263045438
+    "best_dev_f1": 0.9793388429752067,
+    "final_test_f1": 0.9440337909186906,
+    "final_intent_acc": 0.9518477043673013,
+    "avg_metric": 0.947940747642996
 }
