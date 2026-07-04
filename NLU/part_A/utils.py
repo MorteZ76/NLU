@@ -220,8 +220,11 @@ def prepare_atis_data():
     
     words = sum([x['utterance'].split() for x in train_raw], [])
     corpus = train_raw + dev_raw + test_raw 
-    slots = set(sum([line['slots'].split() for line in corpus],[]))
-    intents = set([line['intent'] for line in corpus])
+    # sorted(), not raw set() iteration: Python randomizes string hash seeds per
+    # process, so an unsorted set would assign a different label<->id mapping on
+    # every run, silently corrupting any checkpoint reloaded in a later process.
+    slots = sorted(set(sum([line['slots'].split() for line in corpus],[])))
+    intents = sorted(set([line['intent'] for line in corpus]))
 
     lang = Lang(words, intents, slots, cutoff=0)
     

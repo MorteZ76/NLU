@@ -79,6 +79,8 @@ def main():
     clip = config.get('clip', 5)
     n_epochs = config.get('n_epochs', 200)
     patience = config.get('patience', 3)
+    bidirectional = config.get('bidirectional', True)
+    config['bidirectional'] = bidirectional
 
     criterion_slots = nn.CrossEntropyLoss(ignore_index=PAD_TOKEN)
     criterion_intents = nn.CrossEntropyLoss()
@@ -153,6 +155,7 @@ def main():
                 "vocab_len":     vocab_len,
                 "pad_index":     PAD_TOKEN,
                 "dropout_rate":  trial_cfg.get('dropout_rate',  config.get('dropout_rate', 0.1)),
+                "bidirectional": trial_cfg.get('bidirectional', bidirectional),
             }
 
             model_local = ModelIAS(**model_kwargs).to(device)
@@ -234,8 +237,9 @@ def main():
         "vocab_len":    vocab_len,
         "pad_index":    PAD_TOKEN,
         "dropout_rate": config.get('dropout_rate', 0.1),
+        "bidirectional": bidirectional,
     }
-    
+
     model = ModelIAS(**model_kwargs).to(device)
     model.apply(init_weights)
     optimizer = optim.Adam(model.parameters(), lr=lr)
