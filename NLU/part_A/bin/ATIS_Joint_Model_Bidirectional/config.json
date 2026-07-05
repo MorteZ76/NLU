@@ -6,12 +6,13 @@
     "emb_size": 300,
     "hidden_size": 200,
     "lr": 0.0001,
+    "dropout_rate": 0.0,
     "patience": 3,
     "batch_size": 64,
     "clip": 5,
     "n_epochs": 200,
-    "best_dev_f1": 0.9793388429752067,
-    "final_test_f1": 0.9440337909186906,
-    "final_intent_acc": 0.9518477043673013,
-    "avg_metric": 0.947940747642996
+    "best_dev_f1": 0.9749040448774726,
+    "final_test_f1": 0.9375329931374274,
+    "final_intent_acc": 0.9361702127659575,
+    "avg_metric": 0.9368516029516925
 }

@@ -1,6 +1,6 @@
 ============================================================
 EXPERIMENT RESULTS — ATIS_Joint_Model_Bidirectional
-Saved: 2026-07-04 10:30:44
+Saved: 2026-07-05 08:15:21
 ============================================================
 
 HYPERPARAMETERS
@@ -10,6 +10,7 @@ HYPERPARAMETERS
   emb_size            : 300
   hidden_size         : 200
   lr                  : 0.0001
+  dropout_rate        : 0.0
   clip                : 5
   n_epochs            : 200
   patience            : 3
@@ -17,12 +18,12 @@ HYPERPARAMETERS
 
 FINAL SCORES
 ------------------------------------------------------------
-  Best Dev Slot F1          : 0.9793
-  Test Slot F1              : 0.9440
-  Test Intent Accuracy      : 0.9518
-  Dev Intent Accuracy       : 0.9839
-  Average (Slot F1 + Intent Acc) / 2: 0.9479
-  Stopped at Epoch          : 180
+  Best Dev Slot F1          : 0.9749
+  Test Slot F1              : 0.9375
+  Test Intent Accuracy      : 0.9362
+  Dev Intent Accuracy       : 0.9799
+  Average (Slot F1 + Intent Acc) / 2: 0.9369
+  Stopped at Epoch          : 125
 
 FILES
 ------------------------------------------------------------
