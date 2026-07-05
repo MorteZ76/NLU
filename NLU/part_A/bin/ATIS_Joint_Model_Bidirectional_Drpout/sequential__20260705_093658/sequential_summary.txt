@@ -1,0 +1,82 @@
+================================================================================
+SEQUENTIAL GRID SEARCH SUMMARY
+Saved: 2026-07-05 09:56:04
+================================================================================
+
+FINAL BEST CONFIGURATION
+--------------------------------------------------------------------------------
+  experiment_name: ATIS_Joint_Model_Bidirectional_Drpout
+  model_type: ModelIAS
+  bidirectional: True
+  optimizer: Adam
+  emb_size: 100
+  hidden_size: 200
+  lr: 0.001
+  dropout_rate: 0.5
+  patience: 3
+  batch_size: 64
+  clip: 0.25
+  n_epochs: 200
+  tuning_grid: {'emb_size': [100, 200, 300], 'dropout_rate': [0.0, 0.1, 0.2, 0.3, 0.4, 0.5], 'batch_size': [32, 64, 128], 'clip': [0.25, 1, 5, 20]}
+
+
+SEARCH PROGRESSION
+--------------------------------------------------------------------------------
+
+Step 1: emb_size
+  Best Value  : 100
+  Best Slot F1: 0.951607
+  Best Intent Acc: 0.952968
+
+  Trial   Value              Slot F1   Intent Acc   Avg (rank)  Status
+  ----------------------------------------------------------------------
+  1       100                 0.9502       0.9530       0.9516  ✓ PASS
+  2       200                 0.9451       0.9418       0.9434  ✓ PASS
+  3       300                 0.9475       0.9541       0.9508  ✓ PASS
+
+Step 2: dropout_rate
+  Best Value  : 0.5
+  Best Slot F1: 0.953649
+  Best Intent Acc: 0.956327
+
+  Trial   Value              Slot F1   Intent Acc   Avg (rank)  Status
+  ----------------------------------------------------------------------
+  1       0.0                 0.9386       0.9496       0.9441  ✓ PASS
+  2       0.1                 0.9423       0.9518       0.9471  ✓ PASS
+  3       0.2                 0.9502       0.9530       0.9516  ✓ PASS
+  4       0.3                 0.9483       0.9474       0.9478  ✓ PASS
+  5       0.4                 0.9489       0.9541       0.9515  ✓ PASS
+  6       0.5                 0.9510       0.9563       0.9536  ✓ PASS
+
+Step 3: batch_size
+  Best Value  : 64
+  Best Slot F1: 0.953649
+  Best Intent Acc: 0.956327
+
+  Trial   Value              Slot F1   Intent Acc   Avg (rank)  Status
+  ----------------------------------------------------------------------
+  1       32                  0.9459       0.9485       0.9472  ✓ PASS
+  2       64                  0.9510       0.9563       0.9536  ✓ PASS
+  3       128                 0.9484       0.9507       0.9495  ✓ PASS
+
+Step 4: clip
+  Best Value  : 0.25
+  Best Slot F1: 0.955273
+  Best Intent Acc: 0.955207
+
+  Trial   Value              Slot F1   Intent Acc   Avg (rank)  Status
+  ----------------------------------------------------------------------
+  1       0.25                0.9553       0.9552       0.9553  ✓ PASS
+  2       1                   0.9499       0.9552       0.9526  ✓ PASS
+  3       5                   0.9510       0.9563       0.9536  ✓ PASS
+  4       20                  0.9510       0.9563       0.9536  ✓ PASS
+
+
+================================================================================
+BEST MODEL — FINAL EVALUATION
+Evaluated: 2026-07-05 09:56:04
+--------------------------------------------------------------------------------
+  Avg (Slot F1 + Intent Acc) / 2: 0.9553
+  Test Slot F1              : 0.9553
+  Test Intent Accuracy      : 0.9552
+  Best Dev Slot F1 (during tune): 0.9835
