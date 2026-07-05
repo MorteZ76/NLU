@@ -11,8 +11,8 @@
     "batch_size": 64,
     "clip": 5,
     "n_epochs": 200,
-    "best_dev_f1": 0.9628756629345905,
-    "final_test_f1": 0.9174247725682295,
-    "final_intent_acc": 0.9328107502799552,
-    "avg_metric": 0.9251177614240924
+    "best_dev_f1": 0.9617196702002356,
+    "final_test_f1": 0.9185781824549115,
+    "final_intent_acc": 0.9339305711086227,
+    "avg_metric": 0.926254376781767
 }
