@@ -1,29 +1,29 @@
 ============================================================
 EXPERIMENT RESULTS — ATIS_Joint_Model_Bidirectional_Drpout_Final
-Saved: 2026-07-04 15:00:59
+Saved: 2026-07-05 12:35:34
 ============================================================
 
 HYPERPARAMETERS
 ------------------------------------------------------------
   model_type          : ModelIAS
   optimizer           : Adam
-  emb_size            : 400
+  emb_size            : 200
   hidden_size         : 200
-  lr                  : 0.0001
-  dropout_rate        : 0.1
-  clip                : 5
+  lr                  : 0.001
+  dropout_rate        : 0.7
+  clip                : 0.25
   n_epochs            : 200
   patience            : 3
-  batch_size          : 32
+  batch_size          : 64
 
 FINAL SCORES
 ------------------------------------------------------------
-  Best Dev Slot F1          : 0.9801
-  Test Slot F1              : 0.9458
-  Test Intent Accuracy      : 0.9485
+  Best Dev Slot F1          : 0.9793
+  Test Slot F1              : 0.9513
+  Test Intent Accuracy      : 0.9653
   Dev Intent Accuracy       : 0.9839
-  Average (Slot F1 + Intent Acc) / 2: 0.9471
-  Stopped at Epoch          : 125
+  Average (Slot F1 + Intent Acc) / 2: 0.9583
+  Stopped at Epoch          : 160
 
 FILES
 ------------------------------------------------------------
