@@ -140,6 +140,15 @@ def main():
 
         def run_single_trial(trial_cfg):
             set_seed(1234)
+
+            # Rebuild the train loader if this trial varies batch_size — reusing the
+            # outer train_loader would silently ignore batch_size entirely during tuning.
+            trial_batch_size = trial_cfg.get('batch_size', config['batch_size'])
+            trial_train_loader = DataLoader(
+                train_dataset, batch_size=trial_batch_size,
+                collate_fn=partial(collate_fn_atis, device=device), shuffle=True
+            )
+
             model_kwargs = {
                 "hid_size":      trial_cfg.get('hidden_size',   hid_size),
                 "out_slot":      out_slot,
@@ -160,7 +169,7 @@ def main():
             current_pat = trial_cfg.get('patience', patience)
             
             for epoch_local in range(1, trial_cfg.get('n_epochs', n_epochs) + 1):
-                train_loop(train_loader, optimizer_local, criterion_slots, criterion_intents,
+                train_loop(trial_train_loader, optimizer_local, criterion_slots, criterion_intents,
                            model_local, trial_cfg.get('clip', clip))
                 
                 if epoch_local % 5 == 0:
