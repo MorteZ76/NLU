@@ -234,8 +234,12 @@ def main():
             res_test, intent_test, _ = eval_loop(
                 test_loader, criterion_slots, criterion_intents, trial_model, lang
             )
-            return res_test['total']['f'], {
-                "intent_acc":  intent_test['accuracy'],
+            slot_f1    = res_test['total']['f']
+            intent_acc = intent_test['accuracy']
+            avg_metric = (slot_f1 + intent_acc) / 2.0   # ranking metric
+            return avg_metric, {
+                "slot_f1":     slot_f1,
+                "intent_acc":  intent_acc,
                 "best_dev_f1": best_f1,
             }
 
@@ -252,10 +256,10 @@ def main():
         final_scores = {}
         for result in search_results['all_results'].values():
             if result['best_metric'] != -1.0:
-                final_scores['test_slot_f1']    = result['best_metric']
-                final_scores['test_intent_acc'] = result['best_extras'].get('intent_acc', 0)
-        if 'test_slot_f1' in final_scores and 'test_intent_acc' in final_scores:
-            final_scores['avg_metric'] = (final_scores['test_slot_f1'] + final_scores['test_intent_acc']) / 2.0
+                extras = result['best_extras']
+                final_scores['test_slot_f1']    = extras.get('slot_f1', 0)
+                final_scores['test_intent_acc'] = extras.get('intent_acc', 0)
+                final_scores['avg_metric']       = result['best_metric']
 
         print(f"{'='*52}")
         print(f"Test Slot F1:     {final_scores.get('test_slot_f1', float('nan')):.4f}")
