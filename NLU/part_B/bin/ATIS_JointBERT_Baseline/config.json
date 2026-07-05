@@ -3,43 +3,17 @@
     "model_type": "JointBERT",
     "bert_model": "bert-base-uncased",
     "optimizer": "AdamW",
-    "lr": 3e-05,
+    "lr": 5e-05,
     "dropout_rate": 0.1,
     "patience": 3,
-    "batch_size": 32,
+    "batch_size": 128,
     "clip": 1.0,
-    "n_epochs": 10,
+    "n_epochs": 30,
     "weight_decay": 0.01,
-    "tuning_grid": {
-        "lr": [
-            1e-05,
-            2e-05,
-            3e-05,
-            5e-05
-        ],
-        "dropout_rate": [
-            0.1,
-            0.2,
-            0.3
-        ],
-        "batch_size": [
-            16,
-            32,
-            64
-        ],
-        "clip": [
-            1.0,
-            5.0
-        ],
-        "weight_decay": [
-            0.0,
-            0.01,
-            0.1
-        ]
-    },
-    "best_dev_f1": 0.9811320754716981,
+    "best_dev_f1": 0.9843796050692603,
     "dev_intent_acc": 0.9959839357429718,
-    "test_slot_f1": 0.9538839207434684,
-    "test_intent_acc": 0.973124300111982,
-    "stopped_at_epoch": 10
+    "test_slot_f1": 0.956949569495695,
+    "test_intent_acc": 0.9742441209406495,
+    "avg_metric": 0.9655968452181722,
+    "stopped_at_epoch": 24
 }

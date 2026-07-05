@@ -1,6 +1,6 @@
 ============================================================
 EXPERIMENT RESULTS — ATIS_JointBERT_Baseline
-Saved: 2026-06-29 07:49:06
+Saved: 2026-07-05 14:26:56
 ============================================================
 
 HYPERPARAMETERS
@@ -8,21 +8,22 @@ HYPERPARAMETERS
   model_type          : JointBERT
   bert_model          : bert-base-uncased
   optimizer           : AdamW
-  lr                  : 3e-05
+  lr                  : 5e-05
   dropout_rate        : 0.1
   clip                : 1.0
-  n_epochs            : 10
+  n_epochs            : 30
   patience            : 3
-  batch_size          : 32
+  batch_size          : 128
   weight_decay        : 0.01
 
 FINAL SCORES
 ------------------------------------------------------------
-  Best Dev Slot F1          : 0.9811
+  Best Dev Slot F1          : 0.9844
   Best Dev Intent Acc       : 0.9960
-  Test Slot F1              : 0.9539
-  Test Intent Accuracy      : 0.9731
-  Stopped at Epoch          : 10
+  Test Slot F1              : 0.9569
+  Test Intent Accuracy      : 0.9742
+  Average (Slot F1 + Intent Acc) / 2: 0.9656
+  Stopped at Epoch          : 24
 
 FILES
 ------------------------------------------------------------
