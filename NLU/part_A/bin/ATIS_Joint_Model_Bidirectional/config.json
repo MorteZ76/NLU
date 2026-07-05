@@ -6,7 +6,7 @@
     "emb_size": 300,
     "hidden_size": 200,
     "lr": 0.0001,
-    "dropout_rate": 0.0,
+    "dropout_rate": 0.1,
     "patience": 3,
     "batch_size": 64,
     "clip": 5,
