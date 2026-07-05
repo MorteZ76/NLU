@@ -1,6 +1,6 @@
-# Natural Language Understanding (NLU) — Part 1.A
+# Natural Language Understanding (NLU) — Part 2.A
 
-This directory contains a clean, fully-modularized implementation of Part 1.A: a joint intent classification and slot filling model (`ModelIAS`) trained and evaluated on the ATIS dataset.
+This directory contains a clean, fully-modularized implementation of Part 2.A: a joint intent classification and slot filling model (`ModelIAS`) trained and evaluated on the ATIS dataset.
 
 The model shares a single LSTM encoder between two output heads — one tagging each token with a slot label, the other classifying the utterance's overall intent — trained jointly by summing both cross-entropy losses.
 
@@ -8,25 +8,33 @@ The model shares a single LSTM encoder between two output heads — one tagging 
 
 ## Task Description
 
-The objective of Part 1.A is to improve upon a baseline LSTM joint model by incrementally applying the following mandatory modifications:
+As specified in the official assignment:
 
-1. Make the LSTM encoder **bidirectional**.
-2. Add a **dropout layer** (after the embedding and before the output heads).
+> As for the first part of the project (LM), you have to apply these two modifications incrementally. Also in this case you may have to play with the hyperparameters and optimizers to improve the performance.
+>
+> Modify the baseline architecture Model IAS by:
+> - Adding bidirectionality
+> - Adding dropout layer
+>
+> **Intent classification**: accuracy
+> **Slot filling**: F1 score with conll
+>
+> ***Dataset to use: ATIS***
 
-Performance is measured with two metrics, reported for every experiment:
+Performance is measured with the two required metrics, reported for every experiment:
 
 - **Slot F1** — span-based F1 over BIO-tagged slots, computed with the course-provided `conll.py` evaluation script.
 - **Intent Accuracy** — fraction of utterances with a correctly predicted intent label.
 
-An **Average metric**, `(Slot F1 + Intent Accuracy) / 2`, is also reported for every run as a single ranking number.
+An **Average metric**, `(Slot F1 + Intent Accuracy) / 2`, is also reported for every run as a single ranking number, in addition to the two required metrics above.
 
 ---
 
 ## Assignment Requirements
 
 - **Modular Architecture:** Code is separated into distinct files (`utils.py`, `model.py`, `functions.py`, `main.py`).
-- **Incremental Experimentation:** Bidirectionality and dropout are added one at a time; each is recorded in the experimental log below.
-- **Hyperparameter Tuning:** Sequential grid search optimizes learning rate, hidden/embedding size, dropout rate, batch size, and gradient clipping.
+- **Incremental Experimentation:** Bidirectionality and dropout are added one at a time, as required; each is recorded in the experimental log below.
+- **Hyperparameter Tuning:** Sequential grid search optimizes learning rate, hidden/embedding size, dropout rate, batch size, and gradient clipping. The optimizer (Adam) was kept fixed across experiments.
 - **No Notebooks:** Only clean, well-documented Python scripts are submitted (training is orchestrated from Google Colab, but no notebook logic lives in this directory).
 
 ---
@@ -59,6 +67,7 @@ NLU/
 ## Technical Features
 
 - **Joint Architecture:** A single (bi)LSTM encoder feeds two heads — a per-timestep `Linear` layer for slot tags, and a `Linear` layer over the (concatenated forward/backward, if bidirectional) final hidden state for intent classification.
+- **Dropout is architecturally optional, not just a tunable rate:** `nn.Dropout(dropout_rate)` is a true no-op when `dropout_rate=0.0` (identical to not having the layer at all), so the "Baseline" and "Bidirectional" experiments below were explicitly retrained with `dropout_rate: 0.0` set in their configs — earlier versions of these two checkpoints had silently relied on the code's `dropout_rate=0.1` default, which meant the "+ Dropout" step wasn't actually isolating dropout as its own modification. Every `config.json` in `bin/` now states its `dropout_rate` explicitly, whether zero or not.
 - **Strict Reproducibility:** A fixed global seed of `1234` is applied across all random number generators (Python, NumPy, PyTorch CPU/CUDA). The slot/intent label vocabulary is also built with `sorted()` rather than raw `set()` iteration, guaranteeing the same label-to-id mapping every run — otherwise Python's per-process string hash randomization could assign different ids to the same labels across runs, silently corrupting any checkpoint reloaded in a new process.
 - **Configurable Architecture:** `bidirectional` and `dropout_rate` are read from `config.json` and applied consistently across standard training, `--tune`, and `--eval_only` — the same architecture used to train a checkpoint is always the one used to reload it.
 - **Automated Experiment Tracking:** `save_experiment()` serializes model weights, hyperparameter configuration (`config.json`), Training vs. Validation Loss curves (`loss_plot.png`), and a human-readable `results_summary.txt` for every run.
@@ -135,8 +144,8 @@ python main.py --eval_only --model_path "bin/<experiment_name>/<experiment_name>
 
 | Exp | Configuration | Modification | Val Avg | Test Avg | Decision |
 |:---:|:---|:---|:---:|:---:|:---:|
-| **0** | Baseline | Unidirectional LSTM, default dropout | 0.9674 | 0.9166 | Base |
-| **1** | + Bidirectional | `bidirectional=True` | 0.9816 | 0.9479 | Kept |
+| **0** | Baseline | Unidirectional LSTM, `dropout_rate=0.0` (no dropout) | 0.9707 | 0.9251 | Base |
+| **1** | + Bidirectional | `bidirectional=True`, `dropout_rate=0.0` (no dropout) | 0.9762 | 0.9400 | Kept |
 | **2** | + Dropout & Capacity | `dropout_rate=0.4`, `emb_size=400`, `hidden_size=250`, `lr=0.001`, `batch_size=128` | 0.9816 | 0.9479 | Kept (tuning base) |
 | **3** | Tuning — Round 1 | Sequential search over `lr/hidden_size/dropout_rate/emb_size/batch_size/clip` around Exp 2's config | — | 0.9479 | No further gain |
 | **4** | Tuning — Round 2 | Refined grids around Round 1's best point | — | 0.9490 | Kept |
@@ -157,7 +166,7 @@ python main.py --eval_only --model_path "bin/<experiment_name>/<experiment_name>
 | `batch_size` | 32, 64, 128 | 32 | 0.9479 |
 | `clip` | 1, 5, 10 | 5 | 0.9479 |
 
-Every parameter in this round converged back to the same Avg (0.9479) already achieved by the bidirectional model — the wider capacity/dropout settings from Exp 2 weren't actually helping.
+Every parameter in this round converged back to the same Avg (0.9479) already achieved by the bidirectional + dropout model — the wider capacity/dropout settings from Exp 2 weren't actually helping.
 
 ### Round 2 — `sequential__20260704_135712`
 
@@ -185,8 +194,8 @@ Use `--eval_only` to evaluate any saved checkpoint without retraining:
 python main.py --eval_only --model_path "bin/ATIS_Joint_Model_Baseline/ATIS_Joint_Model_Baseline.pt"
 ```
 ```
-Validation F1: 0.9529 | Intent Acc: 0.9819 | Average: 0.9674
-Test Set F1:   0.9004 | Intent Acc: 0.9328 | Average: 0.9166
+Validation F1: 0.9614 | Intent Acc: 0.9799 | Average: 0.9707
+Test Set F1:   0.9174 | Intent Acc: 0.9328 | Average: 0.9251
 ```
 
 **+ Bidirectional (Exp 1)**
@@ -194,8 +203,8 @@ Test Set F1:   0.9004 | Intent Acc: 0.9328 | Average: 0.9166
 python main.py --eval_only --model_path "bin/ATIS_Joint_Model_Bidirectional/ATIS_Joint_Model_Bidirectional.pt"
 ```
 ```
-Validation F1: 0.9793 | Intent Acc: 0.9839 | Average: 0.9816
-Test Set F1:   0.9440 | Intent Acc: 0.9518 | Average: 0.9479
+Validation F1: 0.9725 | Intent Acc: 0.9799 | Average: 0.9762
+Test Set F1:   0.9371 | Intent Acc: 0.9429 | Average: 0.9400
 ```
 
 **+ Dropout (Exp 2, pre-tuning)**
@@ -220,11 +229,11 @@ Test Set F1:   0.9458 | Intent Acc: 0.9485 | Average: 0.9471
 
 ## Experimental Discussion
 
-**Bidirectionality** delivered by far the largest single gain — Test Average jumped from 0.9166 to 0.9479 (Test Slot F1: 0.9004 → 0.9440). Letting the encoder see both left and right context at every token substantially helps slot tagging, and concatenating the forward and backward final hidden states gives the intent head a fuller summary of the whole utterance instead of only what preceded each token.
+**Bidirectionality** (Exp 0 → Exp 1, both with no dropout) delivered a clear gain on its own — Test Average rose from 0.9251 to 0.9400 (Test Slot F1: 0.9174 → 0.9371, Intent Acc: 0.9328 → 0.9429). Letting the encoder see both left and right context at every token helps slot tagging, and concatenating the forward and backward final hidden states gives the intent head a fuller summary of the whole utterance instead of only what preceded each token.
 
-**Dropout & increased capacity** (Exp 2), applied together with a heavier dropout rate (0.4) and larger embedding/hidden sizes, plateaued rather than improved on the bidirectional result — the added capacity and the added regularization roughly cancelled each other out.
+**Adding dropout** (Exp 1 → Exp 2), together with a heavier dropout rate (0.4) and larger embedding/hidden sizes, gave a further improvement on top of bidirectionality — Test Average rose again from 0.9400 to 0.9479.
 
-**Sequential tuning** confirmed that Exp 2's aggressive settings weren't the right direction: Round 1 converged back to the lighter `dropout_rate=0.1`, `hidden_size=200`, `emb_size=300` — the same effective configuration as the bidirectional-only model. Round 2, searching a narrower grid around that point, found that keeping the lighter dropout and hidden size while increasing only `emb_size` to 400 gave a genuine improvement (Test Avg 0.9479 → 0.9490).
+**Sequential tuning** confirmed that Exp 2's aggressive settings weren't quite optimal: Round 1 converged to a lighter `dropout_rate=0.1`, `hidden_size=200`, `emb_size=300`. Round 2, searching a narrower grid around that point, found that keeping the lighter dropout and hidden size while increasing only `emb_size` to 400 gave a genuine further improvement (Test Avg 0.9479 → 0.9490).
 
 **Final Result:** Retraining from scratch with the tuned configuration (`lr=0.0001`, `hidden_size=200`, `dropout_rate=0.1`, `emb_size=400`, `batch_size=32`, `clip=5`) reached a **Test Average of 0.9471** (Slot F1 0.9458, Intent Accuracy 0.9485), consistent with the sequential search's estimate and confirming the tuned hyperparameters generalize when retrained independently.
 
@@ -232,4 +241,4 @@ Test Set F1:   0.9458 | Intent Acc: 0.9485 | Average: 0.9471
 
 ## AI Assistance Disclosure
 
-AI tools (Claude by Anthropic) were used in the development of this project, including assistance with writing and refining the code structure, bug fixes (reproducible label-id mapping, a training/eval hyperparameter consistency fix), inline comments, docstrings, and this report.
+AI tools (Claude by Anthropic) were used in the development of this project, including assistance with writing and refining the code structure, bug fixes (reproducible label-id mapping, a training/eval hyperparameter consistency fix, explicit zero-dropout baselines), inline comments, docstrings, and this report.
