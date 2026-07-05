@@ -1,218 +1,162 @@
-Language Modeling (LM) - Part 1.A
+# Natural Language Understanding (NLU) — Part 2.B
 
-This repository contains the clean, fully-modularized implementation of Part 1.A (Baseline Vanilla Recurrent Neural Network Language Model) evaluated on the Penn TreeBank (PTB) dataset.
+This directory contains a clean, fully-modularized implementation of Part 2.B: fine-tuning a pre-trained BERT model in a multi-task setting for joint intent classification and slot filling on the ATIS dataset.
 
-The baseline model is trained autoregressively to predict the next word token by optimizing cross-entropy loss over shifted inputs.
+---
 
-Assignment Requirements & Guidelines
+## Task Description
 
-As instructed by the Teaching Assistants (TAs), this sub-folder is designed to fulfill the following strict operational and academic criteria:
+As specified in the official assignment:
 
-Modular Architecture:
-The code must be completely separated into distinct files (utils.py, model.py, functions.py, and main.py) inside this subdirectory.
+> Adapt the code to fine-tune a pre-trained BERT model using a multi-task learning setting on intent classification and slot filling. You can refer to this paper to have a better understanding of how to implement this: [https://arxiv.org/abs/1902.10909](https://arxiv.org/abs/1902.10909). In this, one of the challenges of this is to handle the sub-tokenization issue.
+>
+> Note: The fine-tuning process is to further train on a specific task/s a model that has been pre-trained on a different (potentially unrelated) task/s.
+>
+> The models that you can experiment with are BERT-base or BERT-large.
+>
+> **Intent classification**: accuracy
+> **Slot filling**: F1 score with conll
+>
+> ***Dataset to use: ATIS***
 
-Mandatory Performance Threshold:
-Through hyperparameter optimization and incremental modifications, the final achieved test perplexity must be strictly below 250 ($PPL < 250$).
+Performance is measured with the two required metrics, reported for every experiment:
 
-Incremental Experimentation:
-Modifications to the baseline architecture must be added one at a time. If a specific technique degrades performance, it can be removed before testing the next modification. However, both successful and unsuccessful experiments must be recorded and commented on in the final report.
+- **Slot F1** — span-based F1 over BIO-tagged slots, computed with the course-provided `conll.py` evaluation script, at word granularity (not sub-token granularity).
+- **Intent Accuracy** — fraction of utterances with a correctly predicted intent label.
 
-Hyperparameter Tuning:
-Active optimization of critical parameters (specifically the learning rate, embedding/hidden dimensions, and batch sizes) is required to minimize Perplexity.
+An **Average metric**, `(Slot F1 + Intent Accuracy) / 2`, is also reported for every run as a single ranking number, in addition to the two required metrics above.
 
-No Notebooks:
-Only clean, bug-free, and well-documented Python scripts are accepted.
+---
 
-File and Directory Structure
+## The Sub-Tokenization Challenge
 
-LM/
-└── Part_A/
-    ├── utils.py          # Data preprocessors, Lang vocabulary class, and batch collators
-    ├── model.py          # PyTorch model definition (LM_RNN)
-    ├── functions.py      # Seeding, weight initializers, train/validation loops, and plot utilities
-    ├── main.py           # Command-line-driven execution orchestrator
-    ├── requirements.txt  # Project library dependencies
-    ├── README.md         # This academic documentation, execution guide, and experimental log
-    ├── dataset/          # Stored raw Penn TreeBank text split files
-    └── bin/              # Saved model checkpoints, config parameters, and metrics
-        └── baseline_rnn/
-            ├── baseline_rnn.pt    # PyTorch model state-dict checkpoint
-            ├── config.json        # Recorded hyperparameters and final metrics
-            └── loss_plot.png      # Training vs. Validation Loss curves
+BERT's WordPiece tokenizer can split a single ATIS word into multiple sub-tokens, but the dataset provides one slot label per *word*, not per sub-token. Following [Chen et al., 2019](https://arxiv.org/abs/1902.10909), this is resolved at the data level (`utils.py`, `BERTIntentsAndSlots`):
 
+- The **first** sub-token of each word is assigned that word's real slot label id.
+- Every other position — `[CLS]`, `[SEP]`, padding, and any non-first sub-token — is assigned `-100`.
+- `CrossEntropyLoss(ignore_index=-100)` then automatically skips all of those positions during training.
+- At evaluation time (`functions.py`, `eval_loop`), predictions are gathered only at the positions where the gold label isn't `-100`, reconstructing one label per original word before computing CoNLL F1 — so scoring is always at word granularity, matching the task's slot filling metric.
 
-Technical Features
+---
 
-Strict Seeding for Reproducibility:
-A fixed global seed of 1234 is applied across all random number generators (Python, NumPy, and PyTorch CPU/CUDA backends) to ensure deterministic weights initialization and sequence batching.
+## Assignment Requirements
 
-Smart Parameter Initializations:
-Applies professional initializations (Xavier Uniform for input-to-hidden projections, Orthogonal Initialization for hidden-to-hidden recurrent weights to mitigate gradient instability, and Uniform bounding for linear decoding layers).
+- **Modular Architecture:** Code is separated into distinct files (`utils.py`, `model.py`, `functions.py`, `main.py`).
+- **Multi-Task Fine-Tuning:** A single pre-trained BERT encoder is shared between a slot-tagging head (per-token) and an intent-classification head (from the `[CLS]` token), fine-tuned jointly.
+- **Model Choice:** `bert_model` in `config.json` selects between BERT-base and BERT-large (any Hugging Face BERT checkpoint name is accepted).
+- **Hyperparameter Tuning:** Sequential grid search optimizes learning rate, weight decay, dropout rate, batch size, and gradient clipping.
+- **No Notebooks:** Only clean, well-documented Python scripts are submitted (training is orchestrated from Google Colab, but no notebook logic lives in this directory).
 
-Flexible Action Modes:
-Supports running a full training loop with early stopping or loading pre-trained parameters directly to evaluate performance on the test set.
+---
 
-Mathematical Foundations
+## File and Directory Structure
 
-Autoregressive Dataset Shifts
+```
+NLU/
+└── part_B/
+    ├── utils.py              # ATIS loading, Lang vocabulary (slot/intent), sub-token alignment, collate_fn
+    ├── model.py              # JointBERT: BertModel -> Dropout -> Slot/Intent heads
+    ├── functions.py          # Seeding, train/eval loops, grid search, experiment saving
+    ├── main.py               # CLI orchestrator: standard train / --tune / --eval_only
+    ├── conll.py              # CoNLL-style slot F1 evaluation script
+    ├── requirements.txt      # Standard / GPU library dependencies
+    ├── cpu_requirements.txt  # CPU-only PyTorch dependencies
+    ├── config.json           # Active configuration read by main.py
+    ├── README.md              # This documentation, execution guide, and experimental log
+    ├── dataset/ATIS/          # train.json / test.json
+    └── bin/                   # Saved model checkpoints, configs, plots, and summaries
+        └── <experiment_name>/
+            ├── <experiment_name>.pt   # Final model state-dict checkpoint
+            ├── config.json             # Hyperparameter configuration for this run
+            ├── loss_plot.png           # Training vs. Validation Loss curves
+            └── results_summary.txt     # Human-readable results summary
+```
 
-For a natural sequence of tokens $w_1, w_2, \dots, w_N$, the training configuration aligns:
+---
 
-Inputs (X): $[w_1, w_2, \dots, w_{N-1}]$
+## Technical Features
 
-Targets (Y): $[w_2, w_3, \dots, w_N]$
+- **Multi-Task Architecture:** A single shared `BertModel` feeds two heads — a per-token `Linear` layer for slot tags, and a `Linear` layer over the `[CLS]` token's pooled representation for intent classification, trained jointly by summing both cross-entropy losses.
+- **Sub-Tokenization Handling:** See above — label alignment to first sub-tokens plus `-100` masking, with word-level reconstruction at evaluation time.
+- **Deterministic Label Vocabulary:** Slot/intent label-to-id mappings are built with `sorted()`, guaranteeing the same mapping every run regardless of Python's per-process string hash randomization — otherwise a checkpoint reloaded in a new process could have its labels silently scrambled.
+- **`--tune` correctly varies every parameter, including `batch_size`:** each grid-search trial rebuilds its own data loaders with the trial's config, so `batch_size` trials (and any other parameter) actually produce different results.
+- **Tuning order comes from `config.json` itself:** the sequential search order is exactly the key order of `tuning_grid` in `config.json` (Python/`json.load` preserve insertion order) — reorder the JSON to change what gets tuned first, no code change needed.
+- **Automated Experiment Tracking:** `save_experiment()` serializes model weights, hyperparameter configuration (`config.json`), Training vs. Validation Loss curves (`loss_plot.png`), and a human-readable `results_summary.txt` for every run.
+- **Flexible Execution Modes:** Supports full fine-tuning with early stopping (`default`), sequential hyperparameter grid search (`--tune`), and direct evaluation from a saved checkpoint (`--eval_only`).
+- **Average Metric Reporting:** Every run — standard training, `--tune`, and `--eval_only` — prints and saves `(Slot F1 + Intent Accuracy) / 2` alongside the individual scores.
 
-Perplexity (PPL)
+---
 
-The core metric evaluated is Perplexity, which mathematically represents the exponential of the average Cross-Entropy loss computed over all non-padded tokens ($M$ total tokens):
+## Mathematical Foundation
 
-$$PPL = \exp\left(\frac{1}{M}\sum_{i=1}^{M}\mathcal{L}_i\right) = e^{\text{Average Cross-Entropy Loss}}$$
+**Slot F1** is computed by the CoNLL evaluation script over predicted vs. gold BIO slot tags at word granularity, standard precision/recall/F1 on tag spans.
 
-Installation & Setup
+**Intent Accuracy** is the fraction of utterances where the predicted intent label matches the gold label.
 
-Before running the model, make sure to install all the necessary dependencies. Navigate to the Part_A directory and install the packages using the provided requirements.txt file:
+**Average Metric:**
 
-cd LM/Part_A
+```
+Average = (Slot F1 + Intent Accuracy) / 2
+```
+
+Used to rank hyperparameter trials during `--tune` and as the headline number for comparing experiments.
+
+---
+
+## Installation & Setup
+
+Navigate to the `part_B` directory and install the appropriate dependencies based on your hardware:
+
+**Option A — Standard / GPU Setup**
+
+```bash
+cd NLU/part_B
 pip install -r requirements.txt
+```
 
+**Option B — CPU-Only Setup**
 
-This will automatically install compatible versions of torch, numpy, matplotlib, and tqdm.
+```bash
+cd NLU/part_B
+pip install -r cpu_requirements.txt
+```
 
-Execution Guidelines
+---
 
-Ensure you are in the correct subdirectory before executing:
+## Execution
 
-cd LM/Part_A
+**Standard Fine-Tuning**
 
+Runs the full fine-tuning loop, validates every epoch with early stopping, and saves all artifacts to `bin/`.
 
-Option 1: Standard Training & Optimization
-
-Runs the full training corpus, validates performance, and outputs the baseline artifacts to the /bin directory:
-
+```bash
 python main.py
+```
 
+**Hyperparameter Tuning**
 
-Option 2: Direct Model Evaluation
+Runs the sequential grid search defined by `tuning_grid` in `config.json`, tuning parameters in exactly the order they're listed there, fixing each at its best value before moving to the next.
 
-Skips training to immediately evaluate a saved model binary on the validation and test datasets:
+```bash
+python main.py --tune
+```
 
-python main.py --eval_only --model_path bin/baseline_rnn/baseline_rnn.pt
+**Evaluation Only**
 
+Skips training and evaluates a saved checkpoint directly on the validation and test sets.
 
-Experimental Log & Results (Part 1.A Report)
+```bash
+python main.py --eval_only --model_path "bin/<experiment_name>/<experiment_name>.pt"
+```
 
-Below is the record of incremental architectural modifications, hyperparameter configurations, and their corresponding validation and test Perplexities.
+---
 
-Exp ID
+## Experimental Log
 
-Model Architecture Description
+_Pending — results to be added once fine-tuning and hyperparameter tuning runs are complete._
 
-Learning Rate ($lr$)
+---
 
-Batch Size
+## AI Assistance Disclosure
 
-Validation PPL
-
-Test PPL
-
-Status / Action
-
-0
-
-Vanilla Baseline RNN (LM_RNN)
-
-1.0
-
-64
-
-
-
-$$Insert Val$$
-
-
-
-
-
-$$Insert Test$$
-
-
-
-Baseline
-
-1
-
-Baseline + 
-
-$$Technique A$$
-
-
-
-1.0
-
-64
-
-
-
-$$Insert$$
-
-
-
-
-
-$$Insert$$
-
-
-
-
-
-$$Kept / Rejected$$
-
-
-
-2
-
-Baseline + 
-
-$$Technique A$$
-
- + 
-
-$$Technique B$$
-
-
-
-0.5
-
-64
-
-
-
-$$Insert$$
-
-
-
-
-
-$$Insert$$
-
-
-
-
-
-$$Kept / Rejected$$
-
-
-
-Experimental Observations & Discussion
-
-Hyperparameter Optimization: 
-
-$$Discuss how changing the learning rate, optimizer, batch size, or hidden layers affected convergence stability and final PPL values.$$
-
-Unsuccessful Modifications: 
-
-$$Document any attempted modification that degraded model performance, discussing why it may have led to gradient issues, overfitting, or underfitting on the PTB corpus.$$
-
-Target Achievement: 
-
-$$Confirm here that the final model meets the mandatory project requirement of achieving* $PPL < 250$*.$$
+AI tools (Claude by Anthropic) were used in the development of this project, including assistance with writing and refining the code structure, inline comments, docstrings, and this report.

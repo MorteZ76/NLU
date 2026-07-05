@@ -31,6 +31,18 @@ def build_model(config, num_slots, num_intents, device):
     return model
 
 
+def build_optimizer(config, model):
+    opt_name     = config.get('optimizer', 'AdamW').upper()
+    lr           = config.get('lr', 3e-5)
+    weight_decay = config.get('weight_decay', 0.01)
+    if opt_name == 'ADAM':
+        return optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
+    elif opt_name == 'SGD':
+        return optim.SGD(model.parameters(), lr=lr, weight_decay=weight_decay)
+    else:
+        return optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
+
+
 def build_loaders(train_dataset, dev_dataset, test_dataset, config, device):
     _collate = partial(collate_fn, device=device)
     train_loader = DataLoader(train_dataset, batch_size=config['batch_size'],
@@ -207,11 +219,7 @@ def main():
                 train_dataset, dev_dataset, test_dataset, trial_cfg, device
             )
             trial_model = build_model(trial_cfg, num_slots, num_intents, device)
-            trial_opt   = optim.AdamW(
-                trial_model.parameters(),
-                lr=trial_cfg.get('lr', config['lr']),
-                weight_decay=trial_cfg.get('weight_decay', config.get('weight_decay', 0.01))
-            )
+            trial_opt   = build_optimizer(trial_cfg, trial_model)
 
             best_state, best_f1, best_acc, _, _, _ = run_training(
                 t_loader, d_loader, trial_cfg, trial_model,
@@ -262,11 +270,7 @@ def main():
     print("\n=== Fine-Tuning JointBERT ===")
 
     model     = build_model(config, num_slots, num_intents, device)
-    optimizer = optim.AdamW(
-        model.parameters(),
-        lr=config.get('lr', 3e-5),
-        weight_decay=config.get('weight_decay', 0.01)
-    )
+    optimizer = build_optimizer(config, model)
 
     best_state, best_dev_f1, best_dev_acc, train_losses, dev_losses, stopped_epoch = run_training(
         train_loader, dev_loader, config, model,

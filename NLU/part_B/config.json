@@ -1,40 +1,13 @@
 {
-  "experiment_name": "ATIS_JointBERT_BestHyperparams",
+  "experiment_name": "ATIS_JointBERT_Baseline",
   "model_type": "JointBERT",
   "bert_model": "bert-base-uncased",
   "optimizer": "AdamW",
-  "lr": 2e-05,
+  "lr": 5e-05,
   "dropout_rate": 0.1,
   "patience": 3,
-  "batch_size": 16,
+  "batch_size": 128,
   "clip": 1.0,
-  "n_epochs": 10,
-  "weight_decay": 0.0,
-  "tuning_grid": {
-    "lr": [
-      1e-05,
-      2e-05,
-      3e-05,
-      5e-05
-    ],
-    "weight_decay": [
-      0.0,
-      0.01,
-      0.1
-    ],
-    "dropout_rate": [
-      0.1,
-      0.2,
-      0.3
-    ],
-    "batch_size": [
-      16,
-      32,
-      64
-    ],
-    "clip": [
-      1.0,
-      5.0
-    ]
-  }
+  "n_epochs": 30,
+  "weight_decay": 0.01
 }
