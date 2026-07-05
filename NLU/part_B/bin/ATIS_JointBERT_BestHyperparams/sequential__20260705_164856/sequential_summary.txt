@@ -1,0 +1,57 @@
+================================================================================
+SEQUENTIAL GRID SEARCH SUMMARY
+Saved: 2026-07-05 18:05:26
+================================================================================
+
+FINAL BEST CONFIGURATION
+--------------------------------------------------------------------------------
+  experiment_name: ATIS_JointBERT_BestHyperparams
+  model_type: JointBERT
+  bert_model: bert-base-uncased
+  optimizer: AdamW
+  lr: 3e-05
+  dropout_rate: 0.1
+  patience: 3
+  batch_size: 128
+  clip: 1.0
+  n_epochs: 30
+  weight_decay: 0.1
+
+
+SEARCH PROGRESSION
+--------------------------------------------------------------------------------
+
+Step 1: lr
+  Best Value  : 3e-05
+  Best Avg    : 0.967990
+  Best Slot F1: 0.957256
+  Best Intent Acc: 0.978723
+
+  Trial   Value              Slot F1   Intent Acc   Avg (rank)  Status
+  ----------------------------------------------------------------------
+  1       1e-05               0.9469       0.9754       0.9611  ✓ PASS
+  2       2e-05               0.9503       0.9754       0.9628  ✓ PASS
+  3       3e-05               0.9573       0.9787       0.9680  ✓ PASS
+  4       5e-05               0.9548       0.9776       0.9662  ✓ PASS
+  5       0.0001              0.9557       0.9754       0.9655  ✓ PASS
+
+Step 2: weight_decay
+  Best Value  : 0.1
+  Best Avg    : 0.966323
+  Best Slot F1: 0.953922
+  Best Intent Acc: 0.978723
+
+  Trial   Value              Slot F1   Intent Acc   Avg (rank)  Status
+  ----------------------------------------------------------------------
+  1       0.0                 0.9528       0.9787       0.9658  ✓ PASS
+  2       0.01                0.9571       0.9754       0.9662  ✓ PASS
+  3       0.1                 0.9539       0.9787       0.9663  ✓ PASS
+
+
+================================================================================
+BEST MODEL — FINAL EVALUATION
+Evaluated: 2026-07-05 18:05:26
+--------------------------------------------------------------------------------
+  Test Slot F1              : 0.9539
+  Test Intent Accuracy      : 0.9787
+  Average (Slot F1 + Intent Acc) / 2: 0.9663
