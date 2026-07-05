@@ -182,13 +182,15 @@ def main():
     if args.tune:
         tuning_grid = config.get('tuning_grid', {})
 
-        # Order: lr first (most critical for fine-tuning), weight_decay second
-        # (L2 regularisation interacts directly with lr), then dropout, batch
-        # size, and finally clipping (least impactful).
-        _TUNE_ORDER = ["lr", "weight_decay", "dropout_rate", "batch_size", "clip"]
+        # The search order is exactly the key order of config.json's "tuning_grid" —
+        # Python dicts (and json.load) preserve insertion order, so whatever order the
+        # parameters are written in the JSON file is the order they're tuned in. Each
+        # parameter is fixed at its best value before the next one is searched, so put
+        # whichever parameter most shapes the loss landscape first (e.g. lr), and the
+        # least impactful one last (e.g. clip) — reorder the JSON to change this.
         param_tuning_order = [
-            {"name": p, "values": tuning_grid[p]}
-            for p in _TUNE_ORDER if p in tuning_grid
+            {"name": name, "values": values}
+            for name, values in tuning_grid.items()
         ]
 
         if not param_tuning_order:
