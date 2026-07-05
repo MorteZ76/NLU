@@ -120,24 +120,15 @@ def main():
     if args.tune:
         tuning_grid = config.get('tuning_grid', {})
 
-        # Build the sequential search order from config — add/remove/reorder entries in
-        # config.json's "tuning_grid" to control what gets tuned and in what order.
-        # Parameters searched earlier have their best value fixed for all subsequent steps.
-        # Default order prioritises the most impactful params first.
-        # Order matters: each parameter is fixed at its best value before the next is searched.
-        # Rule: tune params that most shape the loss landscape first, so later params are
-        # optimised in a stable setting.
-        #   1. lr           — controls convergence; a wrong lr makes everything else noisy
-        #   2. hidden_size  — model capacity; strong interaction with lr, so lr must be fixed first
-        #   3. dropout_rate — regularisation only makes sense once capacity is known
-        #   4. emb_size     — embedding size has less impact than encoder size for LSTM models
-        #   5. batch_size   — affects gradient noise but lr is already locked, mild interaction
-        #   6. clip         — stability safeguard, rarely the deciding factor; tune last
-        _TUNE_ORDER = ["lr", "hidden_size", "dropout_rate", "emb_size", "batch_size", "clip"]
+        # The search order is exactly the key order of config.json's "tuning_grid" —
+        # Python dicts (and json.load) preserve insertion order, so whatever order the
+        # parameters are written in the JSON file is the order they're tuned in. Each
+        # parameter is fixed at its best value before the next one is searched, so put
+        # whichever parameter most shapes the loss landscape first (e.g. lr), and the
+        # least impactful one last (e.g. clip) — reorder the JSON to change this.
         param_tuning_order = [
-            {"name": p, "values": tuning_grid[p]}
-            for p in _TUNE_ORDER
-            if p in tuning_grid
+            {"name": name, "values": values}
+            for name, values in tuning_grid.items()
         ]
 
         if not param_tuning_order:
