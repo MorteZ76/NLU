@@ -1,5 +1,5 @@
 {
-  "experiment_name": "ATIS_JointBERT_Baseline",
+  "experiment_name": "ATIS_JointBERT_BestHyperparams",
   "model_type": "JointBERT",
   "bert_model": "bert-base-uncased",
   "optimizer": "AdamW",
@@ -9,5 +9,9 @@
   "batch_size": 128,
   "clip": 1.0,
   "n_epochs": 30,
-  "weight_decay": 0.01
+  "weight_decay": 0.01,
+  "tuning_grid": {
+    "lr": [1e-05, 2e-05, 3e-05, 5e-05, 1e-04],
+    "weight_decay": [0.0, 0.01, 0.1]
+  }
 }
