@@ -10,5 +10,13 @@
     "patience": 3,
     "batch_size": 64,
     "clip": 5,
-    "n_epochs": 200
+    "n_epochs": 200,
+    "tuning_grid": {
+        "lr": [0.0001, 0.001, 0.01],
+        "hidden_size": [100, 200, 300],
+        "dropout_rate": [0.0, 0.1, 0.3, 0.5],
+        "emb_size": [100, 200, 300],
+        "batch_size": [32, 64, 128],
+        "clip": [1, 5, 10]
+    }
 }
