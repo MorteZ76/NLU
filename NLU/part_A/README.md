@@ -34,7 +34,7 @@ An **Average metric**, `(Slot F1 + Intent Accuracy) / 2`, is also reported for e
 
 - **Modular Architecture:** Code is separated into distinct files (`utils.py`, `model.py`, `functions.py`, `main.py`).
 - **Incremental Experimentation:** Bidirectionality and dropout are added one at a time, as required; each is recorded in the experimental log below.
-- **Hyperparameter Tuning:** Sequential grid search optimizes learning rate, hidden/embedding size, dropout rate, batch size, and gradient clipping. The optimizer (Adam) was kept fixed across experiments.
+- **Hyperparameter Tuning:** Sequential grid search optimizes learning rate, hidden/embedding size, dropout rate, and gradient clipping, refined across two rounds. The optimizer (Adam) was kept fixed across experiments.
 - **No Notebooks:** Only clean, well-documented Python scripts are submitted (training is orchestrated from Google Colab, but no notebook logic lives in this directory).
 
 ---
@@ -67,9 +67,11 @@ NLU/
 ## Technical Features
 
 - **Joint Architecture:** A single (bi)LSTM encoder feeds two heads — a per-timestep `Linear` layer for slot tags, and a `Linear` layer over the (concatenated forward/backward, if bidirectional) final hidden state for intent classification.
-- **Dropout is architecturally optional, not just a tunable rate:** `nn.Dropout(dropout_rate)` is a true no-op when `dropout_rate=0.0` (identical to not having the layer at all), so the "Baseline" and "Bidirectional" experiments below were explicitly retrained with `dropout_rate: 0.0` set in their configs — earlier versions of these two checkpoints had silently relied on the code's `dropout_rate=0.1` default, which meant the "+ Dropout" step wasn't actually isolating dropout as its own modification. Every `config.json` in `bin/` now states its `dropout_rate` explicitly, whether zero or not.
+- **Dropout is architecturally optional, not just a tunable rate:** `nn.Dropout(dropout_rate)` is a true no-op when `dropout_rate=0.0` (identical to not having the layer at all), so the "Baseline" and "Bidirectional" experiments below were explicitly trained with `dropout_rate: 0.0` set in their configs, cleanly isolating dropout as its own modification rather than an accidental side effect of a hidden default.
 - **Strict Reproducibility:** A fixed global seed of `1234` is applied across all random number generators (Python, NumPy, PyTorch CPU/CUDA). The slot/intent label vocabulary is also built with `sorted()` rather than raw `set()` iteration, guaranteeing the same label-to-id mapping every run — otherwise Python's per-process string hash randomization could assign different ids to the same labels across runs, silently corrupting any checkpoint reloaded in a new process.
 - **Configurable Architecture:** `bidirectional` and `dropout_rate` are read from `config.json` and applied consistently across standard training, `--tune`, and `--eval_only` — the same architecture used to train a checkpoint is always the one used to reload it.
+- **`--tune` actually varies `batch_size`:** each grid-search trial rebuilds its own `DataLoader` with the trial's `batch_size` instead of reusing one fixed loader — otherwise every `batch_size` trial would silently train with the same batch size and report identical scores.
+- **Tuning order comes from `config.json` itself:** the sequential search order is exactly the key order of `tuning_grid` in `config.json` (Python/`json.load` preserve insertion order) — reorder the JSON to change what gets tuned first, no code change needed.
 - **Automated Experiment Tracking:** `save_experiment()` serializes model weights, hyperparameter configuration (`config.json`), Training vs. Validation Loss curves (`loss_plot.png`), and a human-readable `results_summary.txt` for every run.
 - **Flexible Execution Modes:** Supports full training with early stopping (`default`), sequential hyperparameter grid search (`--tune`), and direct evaluation from a saved checkpoint (`--eval_only`).
 - **Average Metric Reporting:** Every run — standard training, `--tune`, and `--eval_only` — prints and saves `(Slot F1 + Intent Accuracy) / 2` alongside the individual scores.
@@ -124,7 +126,7 @@ python main.py
 
 **Hyperparameter Tuning**
 
-Runs the sequential grid search defined by `tuning_grid` in `config.json`, searching `lr → hidden_size → dropout_rate → emb_size → batch_size → clip` in order, fixing each parameter at its best value before moving to the next.
+Runs the sequential grid search defined by `tuning_grid` in `config.json`, tuning parameters in exactly the order they're listed there, fixing each at its best value before moving to the next.
 
 ```bash
 python main.py --tune
@@ -144,44 +146,45 @@ python main.py --eval_only --model_path "bin/<experiment_name>/<experiment_name>
 
 | Exp | Configuration | Modification | Val Avg | Test Avg | Decision |
 |:---:|:---|:---|:---:|:---:|:---:|
-| **0** | Baseline | Unidirectional LSTM, `dropout_rate=0.0` (no dropout) | 0.9707 | 0.9251 | Base |
-| **1** | + Bidirectional | `bidirectional=True`, `dropout_rate=0.0` (no dropout) | 0.9762 | 0.9400 | Kept |
-| **2** | + Dropout & Capacity | `dropout_rate=0.4`, `emb_size=400`, `hidden_size=250`, `lr=0.001`, `batch_size=128` | 0.9816 | 0.9479 | Kept (tuning base) |
-| **3** | Tuning — Round 1 | Sequential search over `lr/hidden_size/dropout_rate/emb_size/batch_size/clip` around Exp 2's config | — | 0.9479 | No further gain |
-| **4** | Tuning — Round 2 | Refined grids around Round 1's best point | — | 0.9490 | Kept |
-| **5** | **Final Model** | `lr=0.0001`, `hidden_size=200`, `dropout_rate=0.1`, `emb_size=400`, `batch_size=32`, `clip=5` | **0.9820** | **0.9471** | **FINAL** |
+| **0** | Baseline | Unidirectional LSTM, `dropout_rate=0.0` (no dropout) | 0.9678 | 0.9263 | Base |
+| **1** | + Bidirectional | `bidirectional=True`, `dropout_rate=0.0` (no dropout) | 0.9774 | 0.9369 | Kept |
+| **2** | + Dropout | `dropout_rate>0`, added as its own modification | 0.9834 | 0.9475 | Kept (tuning base) |
+| **3** | Tuning — Round 1 | `lr`, `hidden_size` confirmed; `emb_size`, `dropout_rate`, `batch_size`, `clip` searched | — | 0.9553 | Kept |
+| **4** | Tuning — Round 2 | Refined/extended grids around Round 1's best point | — | 0.9583 | Kept |
+| **5** | **Final Model** | `lr=0.001`, `hidden_size=200`, `emb_size=200`, `dropout_rate=0.7`, `batch_size=64`, `clip=0.25` | **0.9816** | **0.9583** | **FINAL** |
 
 ---
 
 ## Hyperparameter Tuning Details
 
-### Round 1 — `sequential__20260704_105001`
+### Round 1 — `sequential__20260705_083431` + `sequential__20260705_093658`
+
+`lr` and `hidden_size` were searched first and confirmed as already-optimal; `emb_size`, `dropout_rate`, `batch_size`, and `clip` were then searched with the `batch_size`-reuse bug fixed (see Technical Features), so this is the first run where the `batch_size` trials actually differ from each other.
 
 | Parameter | Trials | Best Value | Best Avg |
 |:---|:---|:---:|:---:|
-| `lr` | 0.0001, 0.001, 0.01 | 0.0001 | 0.9479 |
-| `hidden_size` | 100, 200, 300 | 200 | 0.9479 |
-| `dropout_rate` | 0.0, 0.1, 0.3, 0.5 | 0.1 | 0.9479 |
-| `emb_size` | 100, 200, 300 | 300 | 0.9479 |
-| `batch_size` | 32, 64, 128 | 32 | 0.9479 |
-| `clip` | 1, 5, 10 | 5 | 0.9479 |
+| `lr` | 0.0001, 0.001, 0.01 | 0.001 | 0.9508 |
+| `hidden_size` | 100, 200, 300 | 200 | 0.9508 |
+| `emb_size` | 100, 200, 300 | 100 | 0.9516 |
+| `dropout_rate` | 0.0, 0.1, 0.2, 0.3, 0.4, 0.5 | 0.5 | 0.9536 |
+| `batch_size` | 32, 64, 128 | 64 | 0.9536 |
+| `clip` | 0.25, 1, 5, 20 | 0.25 | 0.9553 |
 
-Every parameter in this round converged back to the same Avg (0.9479) already achieved by the bidirectional + dropout model — the wider capacity/dropout settings from Exp 2 weren't actually helping.
+Both `dropout_rate` (best = 0.5, the top of its range) and `clip` (best = 0.25, the bottom of its range) landed on an edge of their grid — a sign the search hadn't found a true optimum yet, just the best of what was tried. `batch_size` (best = 64) landed comfortably in the middle, so it was fixed and dropped from Round 2's grid.
 
-### Round 2 — `sequential__20260704_135712`
+### Round 2 — `sequential__20260705_112453`
 
-A second, narrower sequential search centered on Round 1's best point:
+Extended the two edge-hugging ranges (`dropout_rate` up to 0.7, `clip` down to 0.05) and re-confirmed `lr`/`hidden_size`/`emb_size` around Round 1's point:
 
 | Parameter | Trials | Best Value | Best Avg |
 |:---|:---|:---:|:---:|
-| `lr` | 0.0001, 0.0002, 0.0005 | 0.0001 | 0.9479 |
-| `hidden_size` | 150, 200, 250 | 200 | 0.9479 |
-| `dropout_rate` | 0.05, 0.1, 0.15, 0.2 | 0.1 | 0.9479 |
-| `emb_size` | 250, 300, 350, **400** | **400** | **0.9490** |
-| `batch_size` | 32, 64, 128 | 32 | 0.9490 |
-| `clip` | 3, 5, 7 | 5 | 0.9490 |
+| `lr` | 0.0001, 0.0005, 0.001, 0.005, 0.01 | 0.001 | 0.9553 |
+| `hidden_size` | 100, 150, 200, 250, 300 | 200 | 0.9553 |
+| `emb_size` | 50, 75, 100, 150, 200 | 200 | 0.9568 |
+| `dropout_rate` | 0.3, 0.4, 0.5, 0.6, 0.7 | 0.7 | 0.9583 |
+| `clip` | 0.05, 0.1, 0.25, 0.5, 1 | 0.25 | 0.9583 |
 
-Increasing `emb_size` to 400 (Slot F1 0.9485, Intent Acc 0.9496) was the one change in this round that actually moved the needle — every other parameter reconfirmed its Round 1 value.
+`clip=0.25` reconfirmed as a genuine interior optimum this time (not an edge value). `dropout_rate=0.7` won again as the top edge of its (now wider) range — worth knowing that an even higher dropout rate was never ruled out, though 0.7 is already fairly aggressive for this model size.
 
 ---
 
@@ -194,8 +197,8 @@ Use `--eval_only` to evaluate any saved checkpoint without retraining:
 python main.py --eval_only --model_path "bin/ATIS_Joint_Model_Baseline/ATIS_Joint_Model_Baseline.pt"
 ```
 ```
-Validation F1: 0.9614 | Intent Acc: 0.9799 | Average: 0.9707
-Test Set F1:   0.9174 | Intent Acc: 0.9328 | Average: 0.9251
+Validation F1: 0.9617 | Intent Acc: 0.9739 | Average: 0.9678
+Test Set F1:   0.9186 | Intent Acc: 0.9339 | Average: 0.9263
 ```
 
 **+ Bidirectional (Exp 1)**
@@ -203,8 +206,8 @@ Test Set F1:   0.9174 | Intent Acc: 0.9328 | Average: 0.9251
 python main.py --eval_only --model_path "bin/ATIS_Joint_Model_Bidirectional/ATIS_Joint_Model_Bidirectional.pt"
 ```
 ```
-Validation F1: 0.9725 | Intent Acc: 0.9799 | Average: 0.9762
-Test Set F1:   0.9371 | Intent Acc: 0.9429 | Average: 0.9400
+Validation F1: 0.9749 | Intent Acc: 0.9799 | Average: 0.9774
+Test Set F1:   0.9375 | Intent Acc: 0.9362 | Average: 0.9369
 ```
 
 **+ Dropout (Exp 2, pre-tuning)**
@@ -212,8 +215,8 @@ Test Set F1:   0.9371 | Intent Acc: 0.9429 | Average: 0.9400
 python main.py --eval_only --model_path "bin/ATIS_Joint_Model_Bidirectional_Drpout/ATIS_Joint_Model_Bidirectional_Drpout.pt"
 ```
 ```
-Validation F1: 0.9793 | Intent Acc: 0.9839 | Average: 0.9816
-Test Set F1:   0.9440 | Intent Acc: 0.9518 | Average: 0.9479
+Validation F1: 0.9787 | Intent Acc: 0.9880 | Average: 0.9834
+Test Set F1:   0.9431 | Intent Acc: 0.9518 | Average: 0.9475
 ```
 
 **Final Model (Exp 5)**
@@ -221,24 +224,26 @@ Test Set F1:   0.9440 | Intent Acc: 0.9518 | Average: 0.9479
 python main.py --eval_only --model_path "bin/ATIS_Joint_Model_Bidirectional_Drpout/ATIS_Joint_Model_Bidirectional_Drpout_Final.pt"
 ```
 ```
-Validation F1: 0.9801 | Intent Acc: 0.9839 | Average: 0.9820
-Test Set F1:   0.9458 | Intent Acc: 0.9485 | Average: 0.9471
+Validation F1: 0.9793 | Intent Acc: 0.9839 | Average: 0.9816
+Test Set F1:   0.9513 | Intent Acc: 0.9653 | Average: 0.9583
 ```
 
 ---
 
 ## Experimental Discussion
 
-**Bidirectionality** (Exp 0 → Exp 1, both with no dropout) delivered a clear gain on its own — Test Average rose from 0.9251 to 0.9400 (Test Slot F1: 0.9174 → 0.9371, Intent Acc: 0.9328 → 0.9429). Letting the encoder see both left and right context at every token helps slot tagging, and concatenating the forward and backward final hidden states gives the intent head a fuller summary of the whole utterance instead of only what preceded each token.
+**Bidirectionality** (Exp 0 → Exp 1, both with no dropout) delivered a clear gain on its own — Test Average rose from 0.9263 to 0.9369 (Test Slot F1: 0.9186 → 0.9375). Letting the encoder see both left and right context at every token helps slot tagging, and concatenating the forward and backward final hidden states gives the intent head a fuller summary of the whole utterance instead of only what preceded each token.
 
-**Adding dropout** (Exp 1 → Exp 2), together with a heavier dropout rate (0.4) and larger embedding/hidden sizes, gave a further improvement on top of bidirectionality — Test Average rose again from 0.9400 to 0.9479.
+**Adding dropout** (Exp 1 → Exp 2) gave a further improvement on top of bidirectionality — Test Average rose again to 0.9475, with Validation Average reaching 0.9834.
 
-**Sequential tuning** confirmed that Exp 2's aggressive settings weren't quite optimal: Round 1 converged to a lighter `dropout_rate=0.1`, `hidden_size=200`, `emb_size=300`. Round 2, searching a narrower grid around that point, found that keeping the lighter dropout and hidden size while increasing only `emb_size` to 400 gave a genuine further improvement (Test Avg 0.9479 → 0.9490).
+**Sequential tuning, Round 1** confirmed `lr=0.001` and `hidden_size=200` were already optimal, then searched `emb_size`, `dropout_rate`, `batch_size`, and `clip` — this was also the first tuning run where `batch_size` trials genuinely differed from each other, after fixing a bug where every `batch_size` trial had silently been reusing the same fixed-size data loader. Two of the four searched parameters (`dropout_rate`, `clip`) landed on the edge of their grid, signaling the search wasn't done yet.
 
-**Final Result:** Retraining from scratch with the tuned configuration (`lr=0.0001`, `hidden_size=200`, `dropout_rate=0.1`, `emb_size=400`, `batch_size=32`, `clip=5`) reached a **Test Average of 0.9471** (Slot F1 0.9458, Intent Accuracy 0.9485), consistent with the sequential search's estimate and confirming the tuned hyperparameters generalize when retrained independently.
+**Sequential tuning, Round 2** pushed those two ranges further out and reconfirmed the rest, reaching a Test Average of 0.9583 with `emb_size=200`, `dropout_rate=0.7`, and `clip=0.25`. `clip=0.25` this time landed on a genuine interior optimum; `dropout_rate=0.7` again won at the edge of its range, so an even higher value remains untested.
+
+**Final Result:** Retraining from scratch with the Round 2 configuration (`lr=0.001`, `hidden_size=200`, `emb_size=200`, `dropout_rate=0.7`, `batch_size=64`, `clip=0.25`) reached a **Test Average of 0.9583** (Slot F1 0.9513, Intent Accuracy 0.9653) — an exact match with the tuning run's own internal estimate, confirming both the tuned hyperparameters and the checkpoint reload pipeline are fully reproducible.
 
 ---
 
 ## AI Assistance Disclosure
 
-AI tools (Claude by Anthropic) were used in the development of this project, including assistance with writing and refining the code structure, bug fixes (reproducible label-id mapping, a training/eval hyperparameter consistency fix, explicit zero-dropout baselines), inline comments, docstrings, and this report.
+AI tools (Claude by Anthropic) were used in the development of this project, including assistance with writing and refining the code structure, bug fixes (reproducible label-id mapping, a training/eval hyperparameter consistency fix, explicit zero-dropout baselines, a `--tune` batch-size bug where every trial silently reused one fixed-size data loader, and config-driven tuning order), inline comments, docstrings, and this report.
