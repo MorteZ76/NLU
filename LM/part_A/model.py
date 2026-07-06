@@ -63,8 +63,30 @@ class LM_RNN(nn.Module):
 
 
 class LM_LSTM(nn.Module):
+    """
+    LSTM Language Model with embedding and output dropout.
+
+    Architecture:
+      Input (Token IDs) [Batch, SeqLen]
+      ---> nn.Embedding [Batch, SeqLen, EmbSize]
+      ---> Dropout (emb_dropout)
+      ---> nn.LSTM [Batch, SeqLen, HiddenSize]
+      ---> Dropout (out_dropout)
+      ---> nn.Linear (Projection) [Batch, SeqLen, VocabSize]
+      ---> Output (Logits) Permuted to [Batch, VocabSize, SeqLen] (as expected by CrossEntropyLoss)
+    """
     def __init__(self, emb_size, hidden_size, output_size, pad_index=0, out_dropout=0.1,
                  emb_dropout=0.1, n_layers=1):
+        """
+        Args:
+            emb_size (int): Continuous embedding space dimensionality.
+            hidden_size (int): Hidden state dimensions of the LSTM.
+            output_size (int): Total unique classes in vocabulary.
+            pad_index (int): Padding index ignored by embedding gradients.
+            out_dropout (float): Dropout probability applied before the output projection.
+            emb_dropout (float): Dropout probability applied after the embedding layer.
+            n_layers (int): Recurrent layer stack height.
+        """
         super(LM_LSTM, self).__init__()
 
         # Continuous representation space for discrete tokens
@@ -85,6 +107,13 @@ class LM_LSTM(nn.Module):
         self.output = nn.Linear(hidden_size, output_size)
 
     def forward(self, input_sequence):
+        """
+        Args:
+            input_sequence (torch.Tensor): Tensor shape of [Batch Size, Sequence Length]
+
+        Returns:
+            torch.Tensor: Logits shaped as [Batch Size, Vocabulary Size, Sequence Length]
+        """
         # Step 1: Map input IDs to dense continuous vectors; apply embedding regularization
         # Shape transition: [B, T] -> [B, T, Emb]
         emb = self.emb_dropout(self.embedding(input_sequence))

@@ -17,6 +17,15 @@ from model import LM_RNN, LM_LSTM
 from functions import set_seed, init_weights, train_loop, eval_loop, save_experiment, sequential_grid_search
 
 def main():
+    """
+    CLI entry point with three mutually exclusive modes, selected by flag:
+      - default:     standard training with early stopping, saves a checkpoint.
+      - --eval_only: loads a checkpoint (with its own saved config) and reports
+                     Validation/Test Perplexity, no training.
+      - --tune:      sequential hyperparameter grid search — see param_tuning_order
+                     below (currently empty; past results are recorded inline as
+                     comments rather than re-run every time).
+    """
     # 0. Load default configuration (to fetch defaults for argparse)
     config_path = os.path.join(os.path.dirname(__file__), "config.json")
     with open(config_path, 'r') as f:
