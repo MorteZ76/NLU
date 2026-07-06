@@ -159,7 +159,7 @@ python main.py --eval_only --model_path "bin/<experiment_name>/<experiment_name>
 | **1** | Tuning — Round 1 (`lr`, `weight_decay`) | — | 0.9663 | Kept |
 | **2** | Tuning — Round 2 (`dropout_rate`, `batch_size`) | — | 0.9671 | Kept |
 | **3** | Tuning — Round 3 (`dropout_rate` refined, `clip`, `n_epochs`) | — | 0.9671 | Kept |
-| **4** | **Final Model** — `lr=3e-5`, `weight_decay=0.1`, `dropout_rate=0.1`, `batch_size=32`, `clip=1.0`, `n_epochs=20` | _pending_ | _pending_ | **FINAL (retrain pending)** |
+| **4** | **Final Model** — `lr=3e-5`, `weight_decay=0.1`, `dropout_rate=0.1`, `batch_size=32`, `clip=1.0`, `n_epochs=20` | **0.9894** | **0.9671** | **FINAL** |
 
 The baseline already lands very close to Chen et al.'s reported ATIS numbers (Intent 97.5%, Slot F1 96.1%) — Test Intent Acc 97.42%, Test Slot F1 95.69%. Hyperparameter tuning improved the average further, from 0.9656 to 0.9671.
 
@@ -215,7 +215,8 @@ Test — Slot F1: 0.9569  | Intent Acc: 0.9742  | Average: 0.9656
 python main.py --eval_only --model_path bin/ATIS_JointBERT_BestHyperparams_Final/ATIS_JointBERT_BestHyperparams_Final.pt
 ```
 ```
-_Pending — final training run not yet completed._
+Dev  — Slot F1: 0.9829  | Intent Acc: 0.9960  | Average: 0.9894
+Test — Slot F1: 0.9599  | Intent Acc: 0.9742  | Average: 0.9671
 ```
 
 ---
@@ -226,7 +227,7 @@ _Pending — final training run not yet completed._
 
 **Hyperparameter tuning** found a noticeably different — and better — configuration than the paper's own choices for this codebase and split: a smaller `lr` (3e-5 vs. 5e-5), a much smaller `batch_size` (32 vs. 128), and a nonzero `weight_decay` (0.1) that the paper didn't use at all. `dropout_rate=0.1` matched the paper's choice, confirmed as a genuine optimum only after a second, wider round re-tested it against smaller values (it had won an earlier round at the edge of a narrower grid). `n_epochs=20` matching `30` exactly shows the model converges well before the paper's upper range of epoch choices.
 
-**Final Result:** _Pending — the final retrain with the tuned configuration hasn't been run yet (GPU unavailable at time of writing). Once it's run, `--eval_only` on the resulting checkpoint should reproduce close to the tuning run's own internal estimate (Test Avg 0.9671, Slot F1 0.9599, Intent Acc 0.9742), the same way it did for part_A's final model._
+**Final Result:** Retraining from scratch with the tuned configuration (`lr=3e-5`, `weight_decay=0.1`, `dropout_rate=0.1`, `batch_size=32`, `clip=1.0`, `n_epochs=20`) reached a **Test Average of 0.9671** (Slot F1 0.9599, Intent Accuracy 0.9742) — an exact match with the tuning run's own internal estimate, confirming both the tuned hyperparameters and the checkpoint reload pipeline are fully reproducible, the same way it did for part_A's final model.
 
 ---
 
