@@ -9,6 +9,11 @@ from sklearn.model_selection import train_test_split
 
 PAD_TOKEN = 0
 
+
+# =========================================================================
+# DOWNLOAD HELPERS
+# =========================================================================
+
 def download_atis_and_conll(dest_dir="dataset/ATIS"):
     """
     Downloads the ATIS train/test dataset and the conll.py evaluation script if missing.
@@ -35,6 +40,11 @@ def load_data(path):
     with open(path) as f:
         dataset = json.loads(f.read())
     return dataset
+
+
+# =========================================================================
+# VOCABULARY
+# =========================================================================
 
 class Lang():
     """
@@ -79,7 +89,14 @@ class Lang():
         Build a label-to-id mapping (intents or slots).
 
         Args:
-            elements (iterable): Unique label strings.
+            elements (iterable): Unique label strings, already in a deterministic
+                order (e.g. sorted()). Unlike part_B's equivalent, this method
+                does NOT sort internally — it assigns ids by iterating `elements`
+                as given, so the caller (prepare_atis_data) is responsible for
+                passing a pre-sorted iterable. Passing a raw, unsorted set()
+                would assign a different label<->id mapping on every process run
+                (Python randomizes string hash seeds per-process), silently
+                corrupting any checkpoint reloaded in a later process.
             pad (bool): If True, reserve index 0 for a pad label (used for slots, not intents).
 
         Returns:
@@ -91,6 +108,11 @@ class Lang():
         for elem in elements:
                 vocab[elem] = len(vocab)
         return vocab
+
+
+# =========================================================================
+# DATASET
+# =========================================================================
 
 class IntentsAndSlots(data.Dataset):
     """
@@ -147,6 +169,11 @@ class IntentsAndSlots(data.Dataset):
             res.append(tmp_seq)
         return res
 
+
+# =========================================================================
+# COLLATE — dynamic padding within each batch
+# =========================================================================
+
 def collate_fn_atis(data, device):
     """
     Collate a batch of samples into padded tensors for the ATIS dataset.
@@ -185,6 +212,11 @@ def collate_fn_atis(data, device):
     new_item["slots_len"] = y_lengths
     return new_item
 
+
+# =========================================================================
+# TOP-LEVEL DATA PREPARATION
+# =========================================================================
+
 def prepare_atis_data():
     """
     Downloads dataset, runs stratified train/dev split, constructs Lang, and returns everything.
@@ -202,13 +234,17 @@ def prepare_atis_data():
     inputs = []
     mini_train = []
 
+    # sklearn's stratify= requires every class to have at least 2 examples, so any
+    # intent that only appears once in the corpus can't be split at all — those go
+    # straight into mini_train and get added back to train_raw after the split,
+    # rather than being dropped or crashing train_test_split.
     for id_y, y in enumerate(intents):
-        if count_y[y] > 1: 
+        if count_y[y] > 1:
             inputs.append(tmp_train_raw[id_y])
             labels.append(y)
         else:
             mini_train.append(tmp_train_raw[id_y])
-            
+
     # Stratified split so every intent class is proportionally represented in both train and dev
     X_train, X_dev, y_train, y_dev = train_test_split(inputs, labels, test_size=portion,
                                                         random_state=42,

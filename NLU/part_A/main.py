@@ -16,6 +16,14 @@ from model import ModelIAS
 from functions import set_seed, init_weights, train_loop, eval_loop, save_experiment, sequential_grid_search, append_final_scores_to_summary
 
 def main():
+    """
+    CLI entry point with three mutually exclusive modes, selected by flag:
+      - default:     standard training with early stopping, saves a checkpoint.
+      - --eval_only: loads a checkpoint (with its own saved config) and reports
+                     Slot F1 / Intent Acc / Average on dev and test, no training.
+      - --tune:      sequential hyperparameter grid search driven by config.json's
+                     "tuning_grid" (see the comment above param_tuning_order below).
+    """
     # Anchor all relative paths (bin/, dataset/, config.json) to the script's own directory,
     # so the script runs correctly regardless of the working directory it is launched from.
     os.chdir(os.path.dirname(os.path.abspath(__file__)))

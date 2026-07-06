@@ -18,6 +18,11 @@ try:
 except ImportError:
     pass
 
+
+# =========================================================================
+# REPRODUCIBILITY
+# =========================================================================
+
 def set_seed(seed=1234):
     """Set all random seeds for reproducible training across Python, NumPy, and PyTorch."""
     random.seed(seed)
@@ -29,6 +34,11 @@ def set_seed(seed=1234):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
     print(f"[Init] Reproducibility seed successfully configured to: {seed}")
+
+
+# =========================================================================
+# WEIGHT INITIALIZATION
+# =========================================================================
 
 def init_weights(mat):
     """
@@ -55,6 +65,11 @@ def init_weights(mat):
                 torch.nn.init.uniform_(m.weight, -0.01, 0.01)
                 if m.bias is not None:
                     m.bias.data.fill_(0.01)
+
+
+# =========================================================================
+# TRAIN / EVAL LOOPS
+# =========================================================================
 
 def train_loop(data, optimizer, criterion_slots, criterion_intents, model, clip=5):
     """
@@ -162,14 +177,21 @@ def eval_loop(data, criterion_slots, criterion_intents, model, lang):
     report_intent = classification_report(ref_intents, hyp_intents, zero_division=False, output_dict=True)
     return results, report_intent, loss_array
 
+
+# =========================================================================
+# SAVE EXPERIMENT
+# =========================================================================
+
 def save_experiment(model, hyperparameters, train_losses, dev_metrics, name="baseline_atis",
                     final_scores: Dict[str, Any] = None):
     """
-    Saves model checkpoint, config, loss plot, and a human-readable results_summary.txt.
+    Saves model checkpoint, config, loss plot, and a human-readable results_summary.txt
+    to bin/<name>/. Overwrites any existing files at that path — reusing an
+    experiment_name across runs replaces the previous checkpoint entirely.
 
     Args:
         final_scores: dict with keys such as 'best_dev_f1', 'test_slot_f1', 'test_intent_acc',
-                      'stopped_at_epoch'. All optional — only present keys are written.
+                      'avg_metric', 'stopped_at_epoch'. All optional — only present keys are written.
     """
     os.makedirs("bin", exist_ok=True)
     exp_dir = os.path.join("bin", name)
@@ -245,6 +267,10 @@ def save_experiment(model, hyperparameters, train_losses, dev_metrics, name="bas
     print(f"[Save] Results summary saved to: {summary_path}")
 
 
+# =========================================================================
+# GRID SEARCH
+# =========================================================================
+
 def grid_search(param_name: str,
                 param_values: List[Any],
                 base_config: Dict[str, Any],
@@ -267,6 +293,10 @@ def grid_search(param_name: str,
             'best_metric'  — highest metric across all successful trials
             'best_extras'  — extras dict from the best trial
             'results'      — all trial results sorted by metric descending
+
+    Note: on an exact tie between two trials' metrics, the one listed earlier
+    in `param_values` wins (Python's sort is stable) — not necessarily a
+    meaningfully "better" trial, just the first one tried.
     """
     os.makedirs(results_dir, exist_ok=True)
     total_trials = len(param_values)
@@ -427,10 +457,13 @@ def _generate_sequential_summary(parent_dir, all_results, final_config):
         for step, (param_name, result) in enumerate(all_results.items(), 1):
             f.write(f"\nStep {step}: {param_name}\n")
             f.write(f"  Best Value  : {result['best_config'].get(param_name, 'N/A')}\n")
-            f.write(f"  Best Slot F1: {result['best_metric']:.6f}\n")
+            f.write(f"  Best Avg    : {result['best_metric']:.6f}\n")
             best_extras = result.get("best_extras", {})
-            if isinstance(best_extras, dict) and "intent_acc" in best_extras:
-                f.write(f"  Best Intent Acc: {best_extras['intent_acc']:.6f}\n")
+            if isinstance(best_extras, dict):
+                if "slot_f1" in best_extras:
+                    f.write(f"  Best Slot F1: {best_extras['slot_f1']:.6f}\n")
+                if "intent_acc" in best_extras:
+                    f.write(f"  Best Intent Acc: {best_extras['intent_acc']:.6f}\n")
 
             # Per-trial breakdown for this parameter
             trials = result.get("results", [])

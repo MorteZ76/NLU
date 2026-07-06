@@ -25,7 +25,8 @@ SEARCH PROGRESSION
 
 Step 1: lr
   Best Value  : 0.0001
-  Best Slot F1: 0.947941
+  Best Avg    : 0.947900
+  Best Slot F1: 0.944000
   Best Intent Acc: 0.951848
 
   Trial   Value              Slot F1   Intent Acc   Avg (rank)  Status
@@ -36,7 +37,8 @@ Step 1: lr
 
 Step 2: hidden_size
   Best Value  : 200
-  Best Slot F1: 0.947941
+  Best Avg    : 0.947900
+  Best Slot F1: 0.944000
   Best Intent Acc: 0.951848
 
   Trial   Value              Slot F1   Intent Acc   Avg (rank)  Status
@@ -47,7 +49,8 @@ Step 2: hidden_size
 
 Step 3: dropout_rate
   Best Value  : 0.1
-  Best Slot F1: 0.947941
+  Best Avg    : 0.947900
+  Best Slot F1: 0.944000
   Best Intent Acc: 0.951848
 
   Trial   Value              Slot F1   Intent Acc   Avg (rank)  Status
@@ -59,7 +62,8 @@ Step 3: dropout_rate
 
 Step 4: emb_size
   Best Value  : 400
-  Best Slot F1: 0.949049
+  Best Avg    : 0.949000
+  Best Slot F1: 0.948500
   Best Intent Acc: 0.949608
 
   Trial   Value              Slot F1   Intent Acc   Avg (rank)  Status
@@ -71,7 +75,8 @@ Step 4: emb_size
 
 Step 5: batch_size
   Best Value  : 32
-  Best Slot F1: 0.949049
+  Best Avg    : 0.949000
+  Best Slot F1: 0.948500
   Best Intent Acc: 0.949608
 
   Trial   Value              Slot F1   Intent Acc   Avg (rank)  Status
@@ -82,7 +87,8 @@ Step 5: batch_size
 
 Step 6: clip
   Best Value  : 5
-  Best Slot F1: 0.949049
+  Best Avg    : 0.949000
+  Best Slot F1: 0.948500
   Best Intent Acc: 0.949608
 
   Trial   Value              Slot F1   Intent Acc   Avg (rank)  Status
