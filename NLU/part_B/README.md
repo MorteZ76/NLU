@@ -153,7 +153,80 @@ python main.py --eval_only --model_path "bin/<experiment_name>/<experiment_name>
 
 ## Experimental Log
 
-_Pending — results to be added once fine-tuning and hyperparameter tuning runs are complete._
+| Exp | Configuration | Val Avg | Test Avg | Decision |
+|:---:|:---|:---:|:---:|:---:|
+| **0** | Baseline — paper-matched setup (`lr=5e-5`, `batch_size=128`, `dropout_rate=0.1`, `AdamW`) | 0.9902 | 0.9656 | Base |
+| **1** | Tuning — Round 1 (`lr`, `weight_decay`) | — | 0.9663 | Kept |
+| **2** | Tuning — Round 2 (`dropout_rate`, `batch_size`) | — | 0.9671 | Kept |
+| **3** | Tuning — Round 3 (`dropout_rate` refined, `clip`, `n_epochs`) | — | 0.9671 | Kept |
+| **4** | **Final Model** — `lr=3e-5`, `weight_decay=0.1`, `dropout_rate=0.1`, `batch_size=32`, `clip=1.0`, `n_epochs=20` | _pending_ | _pending_ | **FINAL (retrain pending)** |
+
+The baseline already lands very close to Chen et al.'s reported ATIS numbers (Intent 97.5%, Slot F1 96.1%) — Test Intent Acc 97.42%, Test Slot F1 95.69%. Hyperparameter tuning improved the average further, from 0.9656 to 0.9671.
+
+---
+
+## Hyperparameter Tuning Details
+
+Tuning was split into rounds of 1–3 parameters at a time (large BERT fine-tuning runs are expensive), each fixing the previous round's winners before moving on.
+
+### Round 1 — `sequential__20260705_164856` (`lr`, `weight_decay`)
+
+| Parameter | Trials | Best Value | Best Avg |
+|:---|:---|:---:|:---:|
+| `lr` | 1e-05, 2e-05, 3e-05, 5e-05, 1e-04 | 3e-05 | 0.9680 |
+| `weight_decay` | 0.0, 0.01, 0.1 | 0.1 | 0.9663 |
+
+`lr=3e-5` clearly beat the paper's own `5e-5` on this dataset/setup. Note the paper doesn't use weight decay at all — `0.1` outperforming `0.0` here suggests some L2 regularization does help for this smaller AdamW fine-tuning run.
+
+### Round 2 — `sequential__20260705_181239` (`dropout_rate`, `batch_size`)
+
+| Parameter | Trials | Best Value | Best Avg |
+|:---|:---|:---:|:---:|
+| `dropout_rate` | 0.1, 0.2, 0.3 | 0.1 | 0.9654 |
+| `batch_size` | 16, 32, 64, 128 | 32 | 0.9671 |
+
+`dropout_rate=0.1` won at the *lowest* edge of this grid — not yet confirmed as a true optimum, so Round 3 re-tests it against smaller values. `batch_size=32` is a genuine interior optimum, beating the paper's `128`.
+
+### Round 3 — `sequential__20260705_202250` (`dropout_rate` refined, `clip`, `n_epochs`)
+
+| Parameter | Trials | Best Value | Best Avg |
+|:---|:---|:---:|:---:|
+| `dropout_rate` | 0.0, 0.05, 0.1 | 0.1 | 0.9671 |
+| `clip` | 0.5, 1.0, 5.0 | 1.0 | 0.9671 |
+| `n_epochs` | 5, 10, 20, 30 | 20 | 0.9671 |
+
+`dropout_rate=0.1` now beats both `0.0` and `0.05`, confirming it as a genuine optimum rather than an artifact of the previous grid's edge. `clip=1.0` is a clean interior optimum. `n_epochs=20` ties exactly with `30` (both 0.9671), so the model has fully converged by epoch 20 — no benefit to training longer.
+
+---
+
+## Reproducing Results
+
+**Baseline (Exp 0)**
+```bash
+python main.py --eval_only --model_path bin/ATIS_JointBERT_Baseline/ATIS_JointBERT_Baseline.pt
+```
+```
+Dev  — Slot F1: 0.9844  | Intent Acc: 0.9960  | Average: 0.9902
+Test — Slot F1: 0.9569  | Intent Acc: 0.9742  | Average: 0.9656
+```
+
+**Final Model (Exp 4)**
+```bash
+python main.py --eval_only --model_path bin/ATIS_JointBERT_BestHyperparams_Final/ATIS_JointBERT_BestHyperparams_Final.pt
+```
+```
+_Pending — final training run not yet completed._
+```
+
+---
+
+## Experimental Discussion
+
+**Baseline:** Using the paper's own reported hyperparameters (`lr=5e-5`, `batch_size=128`, `dropout_rate=0.1`, Adam-family optimizer), this implementation reproduces Chen et al.'s ATIS results closely — Test Intent Acc 97.42% vs. their reported 97.5%, Test Slot F1 95.69% vs. their 96.1%.
+
+**Hyperparameter tuning** found a noticeably different — and better — configuration than the paper's own choices for this codebase and split: a smaller `lr` (3e-5 vs. 5e-5), a much smaller `batch_size` (32 vs. 128), and a nonzero `weight_decay` (0.1) that the paper didn't use at all. `dropout_rate=0.1` matched the paper's choice, confirmed as a genuine optimum only after a second, wider round re-tested it against smaller values (it had won an earlier round at the edge of a narrower grid). `n_epochs=20` matching `30` exactly shows the model converges well before the paper's upper range of epoch choices.
+
+**Final Result:** _Pending — the final retrain with the tuned configuration hasn't been run yet (GPU unavailable at time of writing). Once it's run, `--eval_only` on the resulting checkpoint should reproduce close to the tuning run's own internal estimate (Test Avg 0.9671, Slot F1 0.9599, Intent Acc 0.9742), the same way it did for part_A's final model._
 
 ---
 

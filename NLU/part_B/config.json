@@ -1,5 +1,5 @@
 {
-  "experiment_name": "ATIS_JointBERT_BestHyperparams",
+  "experiment_name": "ATIS_JointBERT_BestHyperparams_Final",
   "model_type": "JointBERT",
   "bert_model": "bert-base-uncased",
   "optimizer": "AdamW",
@@ -8,11 +8,6 @@
   "patience": 3,
   "batch_size": 32,
   "clip": 1.0,
-  "n_epochs": 30,
-  "weight_decay": 0.1,
-  "tuning_grid": {
-    "dropout_rate": [0.0, 0.05, 0.1],
-    "clip": [0.5, 1.0, 5.0],
-    "n_epochs": [5, 10, 20, 30]
-  }
+  "n_epochs": 20,
+  "weight_decay": 0.1
 }
