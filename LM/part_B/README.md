@@ -139,7 +139,7 @@ The table below records each incremental modification and its impact on validati
 |:---:|:---|:---|:---:|:---:|:---:|
 | **0** | Baseline RNN + SGD (lr=1) | Default settings, no regularization | 7891.023 | 7918.069 | Diverged — lr too low |
 | **1** | RNN + SGD | Tuning: lr=5 | 156.756 | 150.919 | Kept |
-| **2** | + Weight Tying | Tied embedding and output weights (emb\_size=hidden\_size=200) | 155.422 | 150.835 | Kept |
+| **2** | + Weight Tying | Tied embedding and output weights (emb\_size=hidden\_size=400) | 155.422 | 150.835 | Kept |
 | **3** | + Tuning: emb\_size | emb\_size=200 confirmed as optimal | 149.242 | 145.354 | Kept |
 | **4** | + Variational Dropout | emb\_drop=0.1, out\_drop=0.1 | 140.887 | 136.009 | Kept |
 | **5** | **+ NT-ASGD** | **non\_mono=1** | **132.974** | **128.729** | **FINAL** |

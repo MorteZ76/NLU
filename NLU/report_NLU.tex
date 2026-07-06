@@ -1,0 +1,77 @@
+\documentclass[a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage{INTERSPEECH2021}
+
+\title{NLU course project}
+\name{Seyed Morteza Mojtabavi (256328)}
+
+\address{
+  University of Trento}
+\email{seyed.mojtabavi@studenti.unitn.it}
+
+\begin{document}
+
+\maketitle
+
+The following is the report for the second part of the project: Natural Language Understanding.
+
+\section{Introduction}
+
+This part of the project covers two ATIS tasks trained jointly: slot filling, a sequence-labeling problem evaluated with CoNLL F1, and intent classification, evaluated with accuracy. Part A starts from a unidirectional LSTM joint model (\texttt{ModelIAS}) and incrementally adds bidirectionality and dropout, followed by a two-round sequential hyperparameter search. Part B instead fine-tunes a pre-trained BERT-base-uncased encoder for the same two tasks, following Chen et al. (2019), reusing as much of Part A's training/evaluation infrastructure as the different backbone allows. Both parts rank experiments by the average of Slot F1 and Intent Accuracy, alongside the two required metrics individually.
+
+\section{Implementation details}
+
+\subsection{Part A}
+
+I implemented \texttt{ModelIAS}, a joint intent/slot LSTM, as the Baseline. While isolating the two required modifications, I found the codebase's Baseline and Bidirectional configurations were silently training with dropout active by a hidden default (\texttt{dropout\_rate=0.1}), since the model always instantiates a dropout layer regardless of configuration. To make ``no dropout''~\cite{dropout_docs} an explicit, verifiable choice rather than an accidental side effect, I retrained both with \texttt{dropout\_rate=0.0}, mathematically equivalent to omitting the layer entirely. For bidirectionality, enabling the LSTM's \texttt{bidirectional} flag~\cite{lstm_docs} required concatenating the forward/backward final hidden states before the intent head. I also traced and fixed two further issues while validating the pipeline: the label vocabulary was built by iterating a raw Python \texttt{set()}, whose order is randomized per process and silently scrambles any checkpoint reloaded later; and the sequential tuner's \texttt{batch\_size} trials were all training with one fixed-size data loader instead of a per-trial one. The two-round hyperparameter search ranks trials by the average of Slot F1 and Intent Accuracy rather than F1 alone, since the task is explicitly joint.
+
+\subsection{Part B}
+
+Part B fine-tunes BERT-base-uncased~\cite{devlin2019bert,wolf2020transformers} for the same joint task, reusing Part A's training loop structure where the different backbone allows. Following Chen et al.~\cite{chen2019bert}, sub-word tokenization is handled by assigning each word's slot label only to its first WordPiece sub-token, with an ignore index on every other position, so cross-entropy and evaluation are both driven only by first-sub-token positions; the \texttt{[CLS]} token's pooled output feeds the intent head directly, requiring no length-based sequence sorting since attention, unlike the LSTM, is not order-dependent. For the baseline, I matched the paper's reported \texttt{lr=5e-5}, \texttt{batch\_size=128}, and \texttt{dropout=0.1}, but deliberately kept AdamW rather than switching to the paper's plain Adam, then ran the same averaged-metric sequential search used in Part A.
+
+\section{Results}
+
+\subsection{Part A}
+
+Bidirectionality gave the largest single gain on its own, letting the slot head use both left and right context per token and giving the intent head a fuller summary of the whole utterance. Dropout added a further improvement once properly isolated from the earlier hidden-default issue. The two-round sequential search then settled on \texttt{lr=0.001}, \texttt{hidden\_size=200}, \texttt{emb\_size=200}, \texttt{dropout\_rate=0.7}, \texttt{batch\_size=64}, and \texttt{clip=0.25}, reaching a final Test F1 of 0.9513 and Intent Accuracy of 0.9653.
+
+\begin{table}[h]
+\caption{Best results for each configuration (Part A).}
+\label{tab:parta}
+\centering
+\begin{tabular}{lcc}
+\hline
+\textbf{Configuration} & \textbf{Test F1} & \textbf{Test Intent Acc} \\
+\hline
+Baseline (unidirectional, no dropout) & 0.9186 & 0.9339 \\
++ Bidirectional                       & 0.9375 & 0.9362 \\
++ Dropout                             & 0.9431 & 0.9518 \\
+\textbf{Final (tuned)}                & \textbf{0.9513} & \textbf{0.9653} \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Part B}
+
+The BERT baseline, matching the paper's reported learning rate, batch size, and dropout (but keeping AdamW instead of the paper's plain Adam), already lands close to its published ATIS numbers. The subsequent search found a different optimum for this codebase and split: a smaller learning rate, a much smaller batch size, and a nonzero weight decay the paper never used, together reaching a final Test F1 of 0.9599 and Intent Accuracy of 0.9742 — reproduced exactly when retraining from scratch with the tuned configuration.
+
+\begin{table}[h]
+\caption{Best results for each configuration (Part B).}
+\label{tab:partb}
+\centering
+\begin{tabular}{lcc}
+\hline
+\textbf{Configuration} & \textbf{Test F1} & \textbf{Test Intent Acc} \\
+\hline
+Baseline (AdamW) & 0.9569 & 0.9742 \\
+\textbf{Final (tuned)}                   & \textbf{0.9599} & \textbf{0.9742} \\
+\hline
+\end{tabular}
+\end{table}
+
+\bibliographystyle{IEEEtran}
+
+\bibliography{mybib}
+
+\end{document}
