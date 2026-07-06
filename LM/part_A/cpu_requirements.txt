@@ -2,7 +2,7 @@
 --extra-index-url https://download.pytorch.org/whl/cpu
 
 # Core deep learning framework (CPU version)
-torch>=1.10.0+cpu
+torch>=1.10.0
 
 # Scientific computing and numerical operations
 numpy>=1.20.0

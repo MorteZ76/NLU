@@ -2,7 +2,7 @@
 --extra-index-url https://download.pytorch.org/whl/cpu
 
 # Core deep learning framework (CPU version)
-torch>=2.0.0+cpu
+torch>=2.0.0
 
 # Hugging Face transformers (BERT model + tokenizer)
 transformers>=4.30.0
