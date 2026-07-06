@@ -37,6 +37,10 @@ def set_seed(seed=1234):
 # =========================================================================
 
 def train_loop(data, optimizer, criterion_slots, criterion_intents, model, clip=1.0):
+    """
+    Runs one training epoch over `data`, summing slot and intent loss per
+    batch and backpropagating jointly. Returns the list of per-batch losses.
+    """
     model.train()
     loss_array = []
     for sample in data:
@@ -59,6 +63,15 @@ def train_loop(data, optimizer, criterion_slots, criterion_intents, model, clip=
 
 
 def eval_loop(data, criterion_slots, criterion_intents, model, lang):
+    """
+    Runs the model over `data` in eval mode and computes both metrics:
+    Slot F1 via the CoNLL evaluation script (at word granularity, not
+    sub-token granularity — see BERTIntentsAndSlots in utils.py), and
+    Intent Accuracy via sklearn's classification_report.
+
+    Returns:
+        tuple: (conll slot results dict, sklearn intent report dict, per-batch loss list)
+    """
     model.eval()
     loss_array  = []
     ref_intents = []
@@ -123,6 +136,15 @@ def eval_loop(data, criterion_slots, criterion_intents, model, lang):
 
 def save_experiment(model, hyperparameters, train_losses, dev_losses,
                     name="bert_atis", final_scores: Dict[str, Any] = None):
+    """
+    Saves model checkpoint, config, loss plot, and a human-readable results_summary.txt
+    to bin/<name>/. Overwrites any existing files at that path — reusing an
+    experiment_name across runs replaces the previous checkpoint entirely.
+
+    Args:
+        final_scores: dict with keys such as 'best_dev_f1', 'test_slot_f1', 'test_intent_acc',
+                      'avg_metric', 'stopped_at_epoch'. All optional — only present keys are written.
+    """
     os.makedirs("bin", exist_ok=True)
     exp_dir = os.path.join("bin", name)
     os.makedirs(exp_dir, exist_ok=True)
@@ -208,6 +230,30 @@ def grid_search(param_name: str,
                 base_config: Dict[str, Any],
                 run_fn: Callable[[Dict[str, Any]], Tuple[float, Dict[str, Any]]],
                 results_dir: str = "bin/grid_search") -> Dict[str, Any]:
+    """
+    Searches a single parameter over a list of candidate values, keeping the
+    best by metric (higher is better; a trial returning -1.0 is treated as failed).
+
+    Args:
+        param_name: Config key to vary (e.g. 'lr', 'batch_size').
+        param_values: Values to try for this parameter.
+        base_config: Starting configuration; a deep copy is made for each trial,
+                     so only `param_name` differs between trials.
+        run_fn: Function that accepts a trial config dict and returns
+                (metric: float, extras: dict). Return metric=-1.0 to signal failure.
+        results_dir: Directory where trial_results.txt is written.
+
+    Returns:
+        dict with keys:
+            'best_config'  — {param_name: best_value}
+            'best_metric'  — highest metric across all successful trials
+            'best_extras'  — extras dict from the best trial
+            'results'      — all trial results, sorted by metric descending
+
+    Note: on an exact tie between two trials' metrics, the one listed earlier
+    in `param_values` wins (Python's sort is stable) — not necessarily a
+    meaningfully "better" trial, just the first one tried.
+    """
     os.makedirs(results_dir, exist_ok=True)
     results = []
 
@@ -274,6 +320,20 @@ def sequential_grid_search(param_tuning_order: List[Dict[str, Any]],
                             base_config: Dict[str, Any],
                             run_fn: Callable[[Dict[str, Any]], Tuple[float, Dict[str, Any]]],
                             base_results_dir: str = "bin/grid_search") -> Dict[str, Any]:
+    """
+    Runs each parameter search step in `param_tuning_order` in sequence,
+    fixing each parameter's best value before moving to the next. Results
+    for every step are written under a single timestamped
+    bin/<experiment>/sequential__<timestamp>/ directory.
+
+    Call append_final_scores_to_summary() afterwards to add definitive test
+    scores without re-running any trials.
+
+    Returns:
+        dict with keys: 'best_config' (final config with every tuned
+        parameter fixed at its winner), 'all_results' (per-parameter
+        grid_search() results), 'results_dir' (path to write further output to).
+    """
     timestamp         = datetime.now().strftime("%Y%m%d_%H%M%S")
     parent_dir        = os.path.join(base_results_dir, f"sequential__{timestamp}")
     os.makedirs(parent_dir, exist_ok=True)
@@ -331,6 +391,8 @@ def append_final_scores_to_summary(results_dir: str, final_model_scores: Dict[st
 
 
 def _write_sequential_summary(parent_dir, all_results, final_config):
+    """Writes sequential_summary.txt: the final tuned config plus a per-step
+    trial breakdown for every parameter searched by sequential_grid_search()."""
     summary_path = os.path.join(parent_dir, "sequential_summary.txt")
     with open(summary_path, "w", encoding="utf-8") as f:
         f.write("=" * 80 + "\nSEQUENTIAL GRID SEARCH SUMMARY\n")

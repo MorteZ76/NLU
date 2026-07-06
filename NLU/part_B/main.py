@@ -22,6 +22,12 @@ from functions import (set_seed, train_loop, eval_loop, save_experiment,
 
 
 def build_model(config, num_slots, num_intents, device):
+    """
+    Constructs a JointBERT from config's 'dropout_rate' and 'bert_model'.
+    Used identically by standard training, --tune, and --eval_only, so a
+    checkpoint is always reloaded with the exact architecture it was
+    trained with — no risk of a train/eval mismatch.
+    """
     model = JointBERT(
         num_slots    = num_slots,
         num_intents  = num_intents,
@@ -32,6 +38,10 @@ def build_model(config, num_slots, num_intents, device):
 
 
 def build_optimizer(config, model):
+    """
+    Builds an optimizer from config's 'optimizer' name ('AdamW' / 'Adam' /
+    'SGD', case-insensitive; defaults to AdamW), 'lr', and 'weight_decay'.
+    """
     opt_name     = config.get('optimizer', 'AdamW').upper()
     lr           = config.get('lr', 3e-5)
     weight_decay = config.get('weight_decay', 0.01)
@@ -44,6 +54,11 @@ def build_optimizer(config, model):
 
 
 def build_loaders(train_dataset, dev_dataset, test_dataset, config, device):
+    """
+    Builds train/dev/test DataLoaders using config's 'batch_size'. Must be
+    called fresh for every --tune trial (not reused from an earlier config)
+    so that batch_size trials actually train with different batch sizes.
+    """
     _collate = partial(collate_fn, device=device)
     train_loader = DataLoader(train_dataset, batch_size=config['batch_size'],
                               collate_fn=_collate, shuffle=True)
@@ -214,7 +229,9 @@ def main():
         def run_single_trial(trial_cfg):
             set_seed(1234)
 
-            # Rebuild loaders if batch_size changed
+            # Always rebuild the loaders from trial_cfg, even on trials that aren't
+            # tuning batch_size — reusing loaders built from a different config would
+            # silently train every trial with the same fixed batch size.
             t_loader, d_loader, _ = build_loaders(
                 train_dataset, dev_dataset, test_dataset, trial_cfg, device
             )

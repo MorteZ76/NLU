@@ -20,6 +20,14 @@ class JointBERT(nn.Module):
     """
     def __init__(self, num_slots, num_intents, dropout_rate=0.1,
                  model_name='bert-base-uncased'):
+        """
+        Args:
+            num_slots (int): Number of slot label classes (output size for slot filling).
+            num_intents (int): Number of intent classes (output size for intent classification).
+            dropout_rate (float): Dropout probability applied after BERT, before both output heads.
+            model_name (str): Hugging Face checkpoint name, e.g. 'bert-base-uncased' or
+                               'bert-large-uncased'.
+        """
         super(JointBERT, self).__init__()
         self.bert    = BertModel.from_pretrained(model_name)
         self.dropout = nn.Dropout(dropout_rate)
@@ -29,6 +37,16 @@ class JointBERT(nn.Module):
         self.intent_classifier = nn.Linear(hidden_size, num_intents)
 
     def forward(self, input_ids, attention_mask):
+        """
+        Args:
+            input_ids (torch.Tensor): Token id tensor of shape [Batch, SeqLen].
+            attention_mask (torch.Tensor): 1 for real tokens, 0 for padding, shape [Batch, SeqLen].
+
+        Returns:
+            tuple:
+                slot_logits   (torch.Tensor): Shape [Batch, NumSlots, SeqLen].
+                intent_logits (torch.Tensor): Shape [Batch, NumIntents].
+        """
         outputs         = self.bert(input_ids=input_ids, attention_mask=attention_mask)
         sequence_output = self.dropout(outputs.last_hidden_state)  # [B, seq_len, H]
         cls_output      = self.dropout(sequence_output[:, 0, :])   # [B, H]  ([CLS] token)

@@ -16,6 +16,11 @@ PAD_TOKEN = 0
 # =========================================================================
 
 def download_atis_and_conll(dest_dir="dataset/ATIS"):
+    """
+    Downloads the ATIS train/test JSON files and the CoNLL evaluation script
+    if they aren't already present. Safe to call every run — each file is
+    only fetched once and skipped on subsequent calls.
+    """
     os.makedirs(dest_dir, exist_ok=True)
     urls = {
         "train.json": "https://raw.githubusercontent.com/BrownFortress/IntentSlotDatasets/main/ATIS/train.json",
@@ -39,6 +44,7 @@ def download_atis_and_conll(dest_dir="dataset/ATIS"):
         )
 
 def load_data(path):
+    """Loads a JSON dataset file (list of {'utterance', 'slots', 'intent'} dicts)."""
     with open(path) as f:
         return json.load(f)
 
@@ -48,7 +54,14 @@ def load_data(path):
 # =========================================================================
 
 class Lang:
-    """Holds slot and intent label-to-id mappings (no word vocab needed for BERT)."""
+    """
+    Holds slot and intent label-to-id mappings (no word vocab needed for BERT,
+    since BertTokenizerFast handles that).
+
+    Args:
+        intents (Iterable[str]): All intent label strings seen in the corpus.
+        slots (Iterable[str]): All slot label strings seen in the corpus.
+    """
     def __init__(self, intents, slots):
         self.slot2id   = self._lab2id(slots,   pad=True)
         self.intent2id = self._lab2id(intents, pad=False)
@@ -56,10 +69,21 @@ class Lang:
         self.id2intent = {v: k for k, v in self.intent2id.items()}
 
     def _lab2id(self, elements, pad=True):
+        """
+        Builds a label-to-id mapping, id 0 reserved for 'pad' when pad=True.
+
+        Iterates over sorted(elements) rather than the raw input order —
+        this is what actually makes slot2id/intent2id deterministic across
+        runs, regardless of whether the caller passes in a list or a raw
+        set() (Python randomizes string hash order per-process, so an
+        unsorted set would otherwise assign different ids to the same
+        labels on every run, silently corrupting any checkpoint reloaded
+        in a later process).
+        """
         vocab = {}
         if pad:
             vocab['pad'] = PAD_TOKEN
-        for elem in sorted(elements):        # sorted for determinism across runs
+        for elem in sorted(elements):
             if elem not in vocab:
                 vocab[elem] = len(vocab)
         return vocab
@@ -135,6 +159,12 @@ class BERTIntentsAndSlots(data.Dataset):
 # =========================================================================
 
 def collate_fn(batch, device):
+    """
+    Pads each item in the batch to the longest sequence in that batch (not a
+    fixed global max length), then stacks everything into tensors on `device`.
+    Padding uses 0 for input_ids/attention_mask and -100 for slot_ids so it's
+    ignored by CrossEntropyLoss the same way sub-token continuations are.
+    """
     max_len = max(len(item['input_ids']) for item in batch)
 
     input_ids_batch      = []
@@ -172,7 +202,11 @@ def prepare_bert_data(bert_model_name='bert-base-uncased'):
     tmp_train_raw = load_data(os.path.join('dataset', 'ATIS', 'train.json'))
     test_raw      = load_data(os.path.join('dataset', 'ATIS', 'test.json'))
 
-    # Stratified 90/10 train/dev split (same logic as Part A)
+    # Stratified 90/10 train/dev split (same logic as Part A). sklearn's
+    # stratify= requires every class to have at least 2 examples, so any
+    # intent that only appears once in the corpus can't be split at all —
+    # those go straight into mini_train and get added back to train_raw
+    # after the split, rather than being dropped or crashing train_test_split.
     intents  = [x['intent'] for x in tmp_train_raw]
     count_y  = Counter(intents)
     inputs, labels, mini_train = [], [], []
@@ -191,7 +225,9 @@ def prepare_bert_data(bert_model_name='bert-base-uncased'):
     X_train.extend(mini_train)
     train_raw, dev_raw = X_train, X_dev
 
-    # Build label vocab from the full corpus so test labels are never unknown
+    # Build label vocab from the full corpus so test labels are never unknown.
+    # Passing raw (unsorted) sets here is fine — Lang._lab2id sorts internally,
+    # so the resulting id mapping is deterministic regardless.
     corpus  = train_raw + dev_raw + test_raw
     slots   = set(sum([line['slots'].split()  for line in corpus], []))
     intents = set(line['intent'] for line in corpus)
