@@ -23,15 +23,15 @@ SEARCH PROGRESSION
 
 Step 1: lr
   Best Value  : 3e-05
-  Best Avg    : 0.967990
+  Best Avg    : 0.967179
   Best Slot F1: 0.957256
-  Best Intent Acc: 0.978723
+  Best Intent Acc: 0.9770906
 
   Trial   Value              Slot F1   Intent Acc   Avg (rank)  Status
   ----------------------------------------------------------------------
   1       1e-05               0.9469       0.9754       0.9611  ✓ PASS
   2       2e-05               0.9503       0.9754       0.9628  ✓ PASS
-  3       3e-05               0.9573       0.9787       0.9680  ✓ PASS
+  3       3e-05               0.9573       0.9770       0.9671  ✓ PASS
   4       5e-05               0.9548       0.9776       0.9662  ✓ PASS
   5       0.0001              0.9557       0.9754       0.9655  ✓ PASS
 

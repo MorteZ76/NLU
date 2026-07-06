@@ -173,7 +173,7 @@ Tuning was split into rounds of 1–3 parameters at a time (large BERT fine-tuni
 
 | Parameter | Trials | Best Value | Best Avg |
 |:---|:---|:---:|:---:|
-| `lr` | 1e-05, 2e-05, 3e-05, 5e-05, 1e-04 | 3e-05 | 0.9680 |
+| `lr` | 1e-05, 2e-05, 3e-05, 5e-05, 1e-04 | 3e-05 | 0.9671 |
 | `weight_decay` | 0.0, 0.01, 0.1 | 0.1 | 0.9663 |
 
 `lr=3e-5` clearly beat the paper's own `5e-5` on this dataset/setup. Note the paper doesn't use weight decay at all — `0.1` outperforming `0.0` here suggests some L2 regularization does help for this smaller AdamW fine-tuning run.
