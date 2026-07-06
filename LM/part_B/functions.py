@@ -8,9 +8,13 @@ import numpy as np
 import torch
 import torch.nn as nn
 import matplotlib.pyplot as plt
-import itertools
 from typing import Callable, Dict, Any, List, Tuple
 from tqdm import tqdm
+
+
+# =========================================================================
+# REPRODUCIBILITY
+# =========================================================================
 
 def set_seed(seed=1234):
     """
@@ -31,6 +35,11 @@ def set_seed(seed=1234):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
     print(f"[Init] Reproducibility seed successfully configured to: {seed}")
+
+
+# =========================================================================
+# WEIGHT INITIALIZATION
+# =========================================================================
 
 def init_weights(mat):
     """
@@ -69,6 +78,11 @@ def init_weights(mat):
                 torch.nn.init.uniform_(m.weight, -0.01, 0.01)
                 if m.bias is not None:
                     m.bias.data.fill_(0.01)
+
+
+# =========================================================================
+# TRAIN / EVAL LOOPS
+# =========================================================================
 
 def train_loop(data_loader, optimizer, criterion, model, clip=5):
     """
@@ -147,13 +161,21 @@ def eval_loop(data_loader, eval_criterion, model):
     average_loss = total_loss / total_tokens
     return ppl, average_loss
 
+
+# =========================================================================
+# SAVE EXPERIMENT
+# =========================================================================
+
 def save_experiment(model, hyperparameters, train_losses, dev_losses, name="baseline_rnn"):
     """
     Persists training progress by saving:
       - Model parameters (.pt state dict)
       - Hyperparameters configuration (config.json)
       - Train/Validation Loss curves (loss_plot.png)
-      
+
+    Overwrites any existing files at bin/<name>/ — reusing an experiment_name
+    across runs replaces the previous checkpoint entirely.
+
     Args:
         model (Module): Best performing state dictionary model.
         hyperparameters (dict): Relevant experiment variables.
@@ -192,6 +214,10 @@ def save_experiment(model, hyperparameters, train_losses, dev_losses, name="base
     print(f"[Save] Loss plot visualization saved to: {plot_path}")
 
 
+# =========================================================================
+# GRID SEARCH
+# =========================================================================
+
 def grid_search(param_name: str,
                 param_values: List[Any],
                 base_config: Dict[str, Any],
@@ -199,7 +225,9 @@ def grid_search(param_name: str,
                 results_dir: str = "bin/grid_search") -> Dict[str, Any]:
     """
     Perform grid search over a single hyperparameter with organized result storage.
-    
+    Lower metric is better (this is perplexity), so results are sorted ascending
+    and the best trial is the one with the minimum metric.
+
     Args:
         param_name: name of the hyperparameter being tuned
         param_values: list of values to try for this parameter
@@ -209,6 +237,10 @@ def grid_search(param_name: str,
 
     Returns:
         Dictionary with best config and results
+
+    Note: on an exact tie between two trials' metrics, the one listed earlier
+    in `param_values` wins (Python's sort is stable) — not necessarily a
+    meaningfully "better" trial, just the first one tried.
     """
     os.makedirs(results_dir, exist_ok=True)
     
@@ -488,7 +520,12 @@ def _generate_sequential_summary(parent_dir: str,
             f.write(f"  Total Trials: {len(result['results'])}\n")
     
     print(f"[Sequential] Summary saved to: {summary_path}")
-    
+
+
+# =========================================================================
+# NT-ASGD
+# =========================================================================
+
 def check_nt_asgd_trigger(val_losses, non_mono=3):
     """
     Checks the non-monotonic trigger condition for switching from SGD to ASGD.

@@ -17,6 +17,18 @@ from model import LM_RNN, LM_LSTM
 from functions import set_seed, init_weights, train_loop, eval_loop, save_experiment, sequential_grid_search, check_nt_asgd_trigger, swap_asgd_weights, restore_asgd_weights
 
 def main():
+    """
+    CLI entry point with three mutually exclusive modes, selected by flag:
+      - default:     standard training with early stopping, saves a checkpoint.
+                     If optimizer is "NT-ASGD", starts on SGD and dynamically
+                     switches to ASGD once check_nt_asgd_trigger() fires.
+      - --eval_only: loads a checkpoint (with its own saved config), reports
+                     Validation/Test Perplexity, and prints a few sample
+                     generations. No training.
+      - --tune:      sequential hyperparameter grid search — see param_tuning_order
+                     below (currently only "non_mono"; other hyperparameters were
+                     already tuned in earlier stages of this project).
+    """
     # Anchor all relative paths (bin/, dataset/, config.json) to the script's own directory,
     # so the script runs correctly regardless of the working directory it is launched from.
     os.chdir(os.path.dirname(os.path.abspath(__file__)))

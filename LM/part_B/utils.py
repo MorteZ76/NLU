@@ -3,6 +3,11 @@ import urllib.request
 import torch
 import torch.utils.data as data
 
+
+# =========================================================================
+# DOWNLOAD HELPERS
+# =========================================================================
+
 def download_ptb(dest_dir="dataset/PennTreeBank"):
     """
     Checks for the local presence of the Penn TreeBank (PTB) dataset and automatically 
@@ -26,6 +31,11 @@ def download_ptb(dest_dir="dataset/PennTreeBank"):
         else:
             print(f"[Dataset] Found cached version of {filename}. Skipping download.")
 
+
+# =========================================================================
+# DATA LOADING
+# =========================================================================
+
 def read_file(path, eos_token="<eos>"):
     """
     Parses a text file line-by-line, stripping whitespace, and appends an explicit 
@@ -43,6 +53,11 @@ def read_file(path, eos_token="<eos>"):
         for line in f.readlines():
             output.append(line.strip() + " " + eos_token)
     return output
+
+
+# =========================================================================
+# VOCABULARY
+# =========================================================================
 
 class Lang:
     """
@@ -75,6 +90,11 @@ class Lang:
                     output[w] = i
                     i += 1
         return output
+
+
+# =========================================================================
+# DATASET
+# =========================================================================
 
 class PennTreeBank(data.Dataset):
     """
@@ -128,6 +148,11 @@ class PennTreeBank(data.Dataset):
                     break
             res.append(tmp_seq)
         return res
+
+
+# =========================================================================
+# COLLATE — dynamic padding within each batch
+# =========================================================================
 
 def collate_fn(data, pad_token, device):
     """
