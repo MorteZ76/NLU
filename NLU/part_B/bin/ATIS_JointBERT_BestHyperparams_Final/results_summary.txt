@@ -1,0 +1,33 @@
+============================================================
+EXPERIMENT RESULTS — ATIS_JointBERT_BestHyperparams_Final
+Saved: 2026-07-06 10:54:18
+============================================================
+
+HYPERPARAMETERS
+------------------------------------------------------------
+  model_type          : JointBERT
+  bert_model          : bert-base-uncased
+  optimizer           : AdamW
+  lr                  : 3e-05
+  dropout_rate        : 0.1
+  clip                : 1.0
+  n_epochs            : 20
+  patience            : 3
+  batch_size          : 32
+  weight_decay        : 0.1
+
+FINAL SCORES
+------------------------------------------------------------
+  Best Dev Slot F1          : 0.9829
+  Best Dev Intent Acc       : 0.9960
+  Test Slot F1              : 0.9599
+  Test Intent Accuracy      : 0.9742
+  Average (Slot F1 + Intent Acc) / 2: 0.9671
+  Stopped at Epoch          : 14
+
+FILES
+------------------------------------------------------------
+  Checkpoint : bin/ATIS_JointBERT_BestHyperparams_Final/ATIS_JointBERT_BestHyperparams_Final.pt
+  Config     : bin/ATIS_JointBERT_BestHyperparams_Final/config.json
+  Loss plot  : bin/ATIS_JointBERT_BestHyperparams_Final/loss_plot.png
+  This file  : bin/ATIS_JointBERT_BestHyperparams_Final/results_summary.txt

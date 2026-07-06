@@ -1,0 +1,19 @@
+{
+    "experiment_name": "ATIS_JointBERT_BestHyperparams_Final",
+    "model_type": "JointBERT",
+    "bert_model": "bert-base-uncased",
+    "optimizer": "AdamW",
+    "lr": 3e-05,
+    "dropout_rate": 0.1,
+    "patience": 3,
+    "batch_size": 32,
+    "clip": 1.0,
+    "n_epochs": 20,
+    "weight_decay": 0.1,
+    "best_dev_f1": 0.9829009433962264,
+    "dev_intent_acc": 0.9959839357429718,
+    "test_slot_f1": 0.9599297012302285,
+    "test_intent_acc": 0.9742441209406495,
+    "avg_metric": 0.967086911085439,
+    "stopped_at_epoch": 14
+}
