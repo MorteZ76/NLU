@@ -67,7 +67,7 @@ NLU/
 ## Technical Features
 
 - **Joint Architecture:** A single (bi)LSTM encoder feeds two heads — a per-timestep `Linear` layer for slot tags, and a `Linear` layer over the (concatenated forward/backward, if bidirectional) final hidden state for intent classification.
-- **Dropout is architecturally optional, not just a tunable rate:** `nn.Dropout(dropout_rate)` is a true no-op when `dropout_rate=0.0` (identical to not having the layer at all), so the "Baseline" and "Bidirectional" experiments below were explicitly trained with `dropout_rate: 0.0` set in their configs, cleanly isolating dropout as its own modification rather than an accidental side effect of a hidden default.
+- **Dropout is architecturally optional, not just a tunable rate:** `nn.Dropout(dropout_rate)` is a true no-op when `dropout_rate=0.0` (identical to not having the layer at all). The Baseline experiment below was explicitly trained with `dropout_rate: 0.0` set in its config, so it isolates the unidirectional/no-dropout starting point cleanly; dropout is then introduced incrementally across the Bidirectional and Dropout experiments that follow it.
 - **Strict Reproducibility:** A fixed global seed of `1234` is applied across all random number generators (Python, NumPy, PyTorch CPU/CUDA). The slot/intent label vocabulary is also built with `sorted()` rather than raw `set()` iteration, guaranteeing the same label-to-id mapping every run — otherwise Python's per-process string hash randomization could assign different ids to the same labels across runs, silently corrupting any checkpoint reloaded in a new process.
 - **Configurable Architecture:** `bidirectional` and `dropout_rate` are read from `config.json` and applied consistently across standard training, `--tune`, and `--eval_only` — the same architecture used to train a checkpoint is always the one used to reload it.
 - **`--tune` actually varies `batch_size`:** each grid-search trial rebuilds its own `DataLoader` with the trial's `batch_size` instead of reusing one fixed loader — otherwise every `batch_size` trial would silently train with the same batch size and report identical scores.
@@ -147,7 +147,7 @@ python main.py --eval_only --model_path "bin/<experiment_name>/<experiment_name>
 | Exp | Configuration | Modification | Val Avg | Test Avg | Decision |
 |:---:|:---|:---|:---:|:---:|:---:|
 | **0** | Baseline | Unidirectional LSTM, `dropout_rate=0.0` (no dropout) | 0.9678 | 0.9263 | Base |
-| **1** | + Bidirectional | `bidirectional=True`, `dropout_rate=0.0` (no dropout) | 0.9774 | 0.9369 | Kept |
+| **1** | + Bidirectional | `bidirectional=True`, `dropout_rate=0.1` | 0.9774 | 0.9369 | Kept |
 | **2** | + Dropout | `dropout_rate>0`, added as its own modification | 0.9834 | 0.9475 | Kept (tuning base) |
 | **3** | Tuning — Round 1 | `lr`, `hidden_size` confirmed; `emb_size`, `dropout_rate`, `batch_size`, `clip` searched | — | 0.9553 | Kept |
 | **4** | Tuning — Round 2 | Refined/extended grids around Round 1's best point | — | 0.9583 | Kept |
@@ -221,7 +221,7 @@ Test Set F1:   0.9431 | Intent Acc: 0.9518 | Average: 0.9475
 
 **Final Model (Exp 5)**
 ```bash
-python main.py --eval_only --model_path "bin/ATIS_Joint_Model_Bidirectional_Drpout/ATIS_Joint_Model_Bidirectional_Drpout_Final.pt"
+python main.py --eval_only --model_path "bin/ATIS_Joint_Model_Bidirectional_Drpout_Final/ATIS_Joint_Model_Bidirectional_Drpout_Final.pt"
 ```
 ```
 Validation F1: 0.9793 | Intent Acc: 0.9839 | Average: 0.9816
@@ -232,7 +232,7 @@ Test Set F1:   0.9513 | Intent Acc: 0.9653 | Average: 0.9583
 
 ## Experimental Discussion
 
-**Bidirectionality** (Exp 0 → Exp 1, both with no dropout) delivered a clear gain on its own — Test Average rose from 0.9263 to 0.9369 (Test Slot F1: 0.9186 → 0.9375). Letting the encoder see both left and right context at every token helps slot tagging, and concatenating the forward and backward final hidden states gives the intent head a fuller summary of the whole utterance instead of only what preceded each token.
+**Bidirectionality** (Exp 0 → Exp 1) delivered a clear gain on its own — Test Average rose from 0.9263 to 0.9369 (Test Slot F1: 0.9186 → 0.9375). Letting the encoder see both left and right context at every token helps slot tagging, and concatenating the forward and backward final hidden states gives the intent head a fuller summary of the whole utterance instead of only what preceded each token.
 
 **Adding dropout** (Exp 1 → Exp 2) gave a further improvement on top of bidirectionality — Test Average rose again to 0.9475, with Validation Average reaching 0.9834.
 
