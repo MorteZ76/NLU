@@ -18,7 +18,7 @@ The following is the report for the second part of the project: Natural Language
 
 \section{Introduction}
 
-This part of the project covers two ATIS tasks trained jointly: slot filling, a sequence-labeling problem evaluated with CoNLL F1, and intent classification, evaluated with accuracy. Part A starts from a unidirectional LSTM joint model (\texttt{ModelIAS}) and incrementally adds bidirectionality and dropout, followed by a two-round sequential hyperparameter search. Part B instead fine-tunes a pre-trained BERT-base-uncased encoder for the same two tasks, following Chen et al. (2019), reusing as much of Part A's training/evaluation infrastructure as the different backbone allows. Both parts rank experiments by the average of Slot F1 and Intent Accuracy, alongside the two required metrics individually.
+This part of the project covers two ATIS tasks trained jointly: slot filling, a sequence-labeling problem evaluated with CoNLL F1, and intent classification, evaluated with accuracy. Part A starts from a unidirectional LSTM joint model (\texttt{ModelIAS}) and incrementally adds bidirectionality and dropout, followed by a two-round sequential hyperparameter search. Part B instead fine-tunes a pre-trained BERT-base-uncased encoder for the same two tasks, following Chen et al. (2019), reusing as much of Part A's training/evaluation infrastructure as the different backbone allows. Both parts rank experiments by the average of Slot F1 and Intent Accuracy, alongside the two required metrics individually. All training ran on Google Colab rather than a dedicated GPU machine, which limited how much I could sanity-check the code beforehand and how exhaustive the hyperparameter search could be.
 
 \section{Implementation details}
 
