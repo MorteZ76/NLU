@@ -24,7 +24,7 @@ This part of the project covers two ATIS tasks trained jointly: slot filling, a 
 
 \subsection{Part A}
 
-I implemented \texttt{ModelIAS}, a joint intent/slot LSTM, as the Baseline. While isolating the two required modifications, I found the codebase's Baseline and Bidirectional configurations were silently training with dropout active by a hidden default (\texttt{dropout\_rate=0.1}), since the model always instantiates a dropout layer regardless of configuration. To make ``no dropout''~\cite{dropout_docs} an explicit, verifiable choice rather than an accidental side effect, I retrained both with \texttt{dropout\_rate=0.0}, mathematically equivalent to omitting the layer entirely. For bidirectionality, enabling the LSTM's \texttt{bidirectional} flag~\cite{lstm_docs} required concatenating the forward/backward final hidden states before the intent head. I also traced and fixed two further issues while validating the pipeline: the label vocabulary was built by iterating a raw Python \texttt{set()}, whose order is randomized per process and silently scrambles any checkpoint reloaded later; and the sequential tuner's \texttt{batch\_size} trials were all training with one fixed-size data loader instead of a per-trial one. The two-round hyperparameter search ranks trials by the average of Slot F1 and Intent Accuracy rather than F1 alone, since the task is explicitly joint.
+I implemented \texttt{ModelIAS} as the Baseline: a unidirectional LSTM encoder shared between a per-token slot-tagging head and an intent-classification head, with no dropout applied. Starting from this Baseline, I added the two required modifications one at a time. For bidirectionality, enabling the LSTM's \texttt{bidirectional} flag~\cite{lstm_docs} required concatenating the forward and backward final hidden states before feeding the intent head. For dropout~\cite{dropout_docs}, I applied it after the embedding lookup and before both output heads. The two-round hyperparameter search that followed tuned learning rate, hidden/embedding size, dropout rate, batch size, and gradient clipping sequentially, ranking trials by the average of Slot F1 and Intent Accuracy rather than F1 alone, since the task is explicitly joint.
 
 \subsection{Part B}
 
@@ -34,7 +34,7 @@ Part B fine-tunes BERT-base-uncased~\cite{devlin2019bert,wolf2020transformers} f
 
 \subsection{Part A}
 
-Bidirectionality gave the largest single gain on its own, letting the slot head use both left and right context per token and giving the intent head a fuller summary of the whole utterance. Dropout added a further improvement once properly isolated from the earlier hidden-default issue. The two-round sequential search then settled on \texttt{lr=0.001}, \texttt{hidden\_size=200}, \texttt{emb\_size=200}, \texttt{dropout\_rate=0.7}, \texttt{batch\_size=64}, and \texttt{clip=0.25}, reaching a final Test F1 of 0.9513 and Intent Accuracy of 0.9653.
+Bidirectionality gave the largest single gain on its own, letting the slot head use both left and right context per token and giving the intent head a fuller summary of the whole utterance. Dropout added a further improvement on top of that. The two-round sequential search then settled on \texttt{lr=0.001}, \texttt{hidden\_size=200}, \texttt{emb\_size=200}, \texttt{dropout\_rate=0.7}, \texttt{batch\_size=64}, and \texttt{clip=0.25}, reaching a final Test F1 of 0.9513 and Intent Accuracy of 0.9653.
 
 \begin{table}[h]
 \caption{Best results for each configuration (Part A).}
@@ -66,6 +66,26 @@ The BERT baseline, matching the paper's reported learning rate, batch size, and 
 \hline
 Baseline (AdamW) & 0.9569 & 0.9742 \\
 \textbf{Final (tuned)}                   & \textbf{0.9599} & \textbf{0.9742} \\
+\hline
+\end{tabular}
+\end{table}
+
+Tuning was split across three rounds; the table below gives the best value found for each parameter, together with the average metric at the point it was fixed.
+
+\begin{table}[h]
+\caption{Sequential search results across all rounds (Part B).}
+\label{tab:partb-tuning}
+\centering
+\begin{tabular}{lcc}
+\hline
+\textbf{Parameter} & \textbf{Best Value} & \textbf{Best Avg} \\
+\hline
+lr            & 3e-05 & 0.9671 \\
+weight\_decay & 0.1   & 0.9663 \\
+dropout\_rate & 0.1   & 0.9671 \\
+batch\_size   & 32    & 0.9671 \\
+clip          & 1.0   & 0.9671 \\
+n\_epochs     & 20    & 0.9671 \\
 \hline
 \end{tabular}
 \end{table}
