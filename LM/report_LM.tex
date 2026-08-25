@@ -61,7 +61,7 @@ LSTM + Dropout               & 151.66 & 146.90 \\
 
 \subsection{Part B}
 
-A first tuning pass over the learning rate was necessary since the default SGD rate diverged entirely; \texttt{lr=5} stabilized training at a Test PPL on par with Part A's LSTM despite using plain SGD. Weight tying alone barely changed the score numerically, but it made embedding size a meaningful hyperparameter --- tuning it gave the first result below the Part A baseline. Variational dropout then delivered the largest single gain in this part. Finally, NT-AvSGD with a tight trigger window (\texttt{non\_mono=1}) gave the final improvement; wider windows (2--5) never triggered early enough to beat the pre-ASGD result. The final model reaches Test PPL \textbf{128.73}, below both the 250 threshold and Part A's LSTM baseline (149.52).
+A first tuning pass over the learning rate was necessary since the default SGD rate diverged entirely; \texttt{lr=5} stabilized training at a Test PPL on par with Part A's LSTM baseline (149.52, which also used plain SGD at that stage), despite this RNN having no gating mechanism. Weight tying alone barely changed the score numerically, but it made embedding size a meaningful hyperparameter --- tuning it gave the first result below Part A's LSTM baseline (149.52). Variational dropout then delivered the largest single gain in this part. Finally, NT-AvSGD with a tight trigger window (\texttt{non\_mono=1}) gave the final improvement; wider windows (2--5) never triggered early enough to beat the pre-ASGD result. The final model reaches Test PPL \textbf{128.73}, below both the 250 threshold and Part A's LSTM baseline (149.52).
 
 \begin{table}[h]
 \caption{Best perplexity results for each configuration (Part B).}
