@@ -13,6 +13,10 @@ class VariationalDropout(nn.Module):
     def forward(self, x):
         if not self.training or not self.p:
             return x
+        # One mask of shape [Batch, 1, Feat] is sampled per forward call and broadcast across
+        # every timestep, so the same units stay dropped for the whole sequence (unlike standard
+        # dropout, which resamples per timestep). Dividing by (1 - p) is inverted dropout scaling,
+        # keeping the expected activation magnitude unchanged so no rescaling is needed at eval time.
         mask = x.new_empty(x.size(0), 1, x.size(2), requires_grad=False).bernoulli_(1 - self.p)
         return x * mask / (1 - self.p)
 
